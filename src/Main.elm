@@ -2,12 +2,24 @@ port module Main exposing (..)
 
 import Browser
 import Browser.Dom as Dom
+import Color exposing (Color)
+import Force exposing (State)
+import Graph exposing (Edge, Graph, Node, NodeId)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
+import IntDict
 import Json.Decode as Json
+import List exposing (range)
+import Scale exposing (SequentialScale)
+import Scale.Color
 import Task
+import TypedSvg exposing (circle, g, line, polygon, svg, title)
+import TypedSvg.Attributes exposing (fill, points, stroke, viewBox)
+import TypedSvg.Attributes.InPx exposing (cx, cy, r, strokeWidth, x1, x2, y1, y2)
+import TypedSvg.Core exposing (Svg)
+import TypedSvg.Types exposing (Paint(..))
 
 
 main : Program (Maybe (List Node)) Model Msg
@@ -47,9 +59,9 @@ type alias Model =
 type alias Node =
     { id : Int
     , label : String
-    , tru : Float
-    , ind : Float
-    , fal : Float
+    , truth : Float
+    , indeterminacy : Float
+    , falsehood : Float
     }
 
 
@@ -60,9 +72,9 @@ type NeutroField
 type alias Form =
     { id : Int
     , label : String
-    , tru : NeutroField
-    , ind : NeutroField
-    , fal : NeutroField
+    , truth : NeutroField
+    , indeterminacy : NeutroField
+    , falsehood : NeutroField
     }
 
 
@@ -77,9 +89,9 @@ defaultForm : Form
 defaultForm =
     { id = 0
     , label = ""
-    , tru = NeutroField Nothing ""
-    , ind = NeutroField Nothing ""
-    , fal = NeutroField Nothing ""
+    , truth = NeutroField Nothing ""
+    , indeterminacy = NeutroField Nothing ""
+    , falsehood = NeutroField Nothing ""
     }
 
 
@@ -99,9 +111,9 @@ type Msg
     | Add
     | Delete Int
     | UpdateLabel String
-    | UpdateTru String
-    | UpdateInd String
-    | UpdateFal String
+    | UpdateTruth String
+    | UpdateIndeterminacy String
+    | UpdateFalsehood String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -115,13 +127,13 @@ update msg model =
                 newNode =
                     { id = model.form.id
                     , label = model.form.label
-                    , tru = model.form.tru |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
-                    , ind = model.form.ind |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
-                    , fal = model.form.fal |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    , truth = model.form.truth |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    , indeterminacy = model.form.indeterminacy |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    , falsehood = model.form.falsehood |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
                     }
 
                 newForm =
-                    { defaultForm | id = model.form.id + 1 }
+                    { defaultForm | id = 0 }
             in
             ( { model
                 | form = newForm
@@ -146,14 +158,14 @@ update msg model =
             in
             ( { model | form = newForm }, Cmd.none )
 
-        UpdateTru newTruth ->
+        UpdateTruth newTruth ->
             let
                 oldForm =
                     model.form
 
                 newForm =
                     if String.right 1 newTruth == "." then
-                        { oldForm | tru = NeutroField Nothing newTruth }
+                        { oldForm | truth = NeutroField Nothing newTruth }
 
                     else
                         let
@@ -162,21 +174,21 @@ update msg model =
                         in
                         case maybeTruth of
                             Nothing ->
-                                { oldForm | tru = NeutroField Nothing newTruth }
+                                { oldForm | truth = NeutroField Nothing newTruth }
 
-                            Just p ->
-                                { oldForm | tru = NeutroField (Just p) newTruth }
+                            Just t ->
+                                { oldForm | truth = NeutroField (Just t) newTruth }
             in
             ( { model | form = newForm }, Cmd.none )
 
-        UpdateInd newIndeterminacy ->
+        UpdateIndeterminacy newIndeterminacy ->
             let
                 oldForm =
                     model.form
 
                 newForm =
                     if String.right 1 newIndeterminacy == "." then
-                        { oldForm | ind = NeutroField Nothing newIndeterminacy }
+                        { oldForm | indeterminacy = NeutroField Nothing newIndeterminacy }
 
                     else
                         let
@@ -185,21 +197,21 @@ update msg model =
                         in
                         case maybeIndeterminacy of
                             Nothing ->
-                                { oldForm | ind = NeutroField Nothing newIndeterminacy }
+                                { oldForm | indeterminacy = NeutroField Nothing newIndeterminacy }
 
                             Just p ->
-                                { oldForm | ind = NeutroField (Just p) newIndeterminacy }
+                                { oldForm | indeterminacy = NeutroField (Just p) newIndeterminacy }
             in
             ( { model | form = newForm }, Cmd.none )
 
-        UpdateFal newFalsehood ->
+        UpdateFalsehood newFalsehood ->
             let
                 oldForm =
                     model.form
 
                 newForm =
                     if String.right 1 newFalsehood == "." then
-                        { oldForm | fal = NeutroField Nothing newFalsehood }
+                        { oldForm | falsehood = NeutroField Nothing newFalsehood }
 
                     else
                         let
@@ -208,10 +220,10 @@ update msg model =
                         in
                         case maybeFalsehood of
                             Nothing ->
-                                { oldForm | fal = NeutroField Nothing newFalsehood }
+                                { oldForm | falsehood = NeutroField Nothing newFalsehood }
 
                             Just p ->
-                                { oldForm | fal = NeutroField (Just p) newFalsehood }
+                                { oldForm | falsehood = NeutroField (Just p) newFalsehood }
             in
             ( { model | form = newForm }, Cmd.none )
 
@@ -223,24 +235,21 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div
-        [ class "container-fluid min-vh-100" ]
+        [ class "app" ]
         [ div
-            [ class "row" ]
-            [ div
-                [ class "col-4" ]
-                [ h3 [ class "title" ] [ text "Node Input:" ]
-                , viewInput model.form
-                , button
-                    [ type_ "button"
-                    , class "btn btn-primary mb-3"
-                    , onClick Add
-                    , disabled (checkFormIsEmpty model)
-                    ]
-                    [ text "Add Node" ]
-                , viewNodes model.nodes
+            [ class "col-4" ]
+            [ h3 [ class "title m-3" ] [ text "Node Input:" ]
+            , viewInput model.form
+            , button
+                [ type_ "button"
+                , class "btn btn-primary m-3"
+                , onClick Add
+                , disabled (checkFormIsEmpty model)
                 ]
-            , div [ class "col-8 bg-dark text-white" ] [ text "Canvas" ]
+                [ text "Add Node" ]
+            , viewNodes model.nodes
             ]
+        , div [ class "col-8 bg-dark text-white" ] [ text "Canvas" ]
         ]
 
 
@@ -259,24 +268,24 @@ viewInput node =
             [ class "form-control mb-3"
             , placeholder "Truth"
             , autofocus True
-            , value (neutroFieldToString node.tru)
-            , onInput UpdateTru
+            , value (neutroFieldToString node.truth)
+            , onInput UpdateTruth
             ]
             []
         , input
             [ class "form-control mb-3"
             , placeholder "Indeterminacy"
             , autofocus True
-            , value (neutroFieldToString node.ind)
-            , onInput UpdateInd
+            , value (neutroFieldToString node.indeterminacy)
+            , onInput UpdateIndeterminacy
             ]
             []
         , input
             [ class "form-control mb-3"
             , placeholder "Falsehood"
             , autofocus True
-            , value (neutroFieldToString node.fal)
-            , onInput UpdateFal
+            , value (neutroFieldToString node.falsehood)
+            , onInput UpdateFalsehood
             ]
             []
         ]
@@ -299,7 +308,7 @@ viewNodes nodes =
         [ tr
             []
             [ th [ scope "col" ]
-                [ text "Node Id" ]
+                [ text "Node" ]
             , th [ scope "col" ]
                 [ text "Label" ]
             , th [ scope "col" ]
@@ -323,17 +332,16 @@ viewKeyedNode node =
 viewNode : Node -> Html Msg
 viewNode node =
     tr []
-        [ td
-            [ scope "row" ]
+        [ td []
             [ text (String.fromInt node.id) ]
         , td []
             [ text node.label ]
         , td []
-            [ text (String.fromFloat node.tru) ]
+            [ text (String.fromFloat node.truth) ]
         , td []
-            [ text (String.fromFloat node.ind) ]
+            [ text (String.fromFloat node.indeterminacy) ]
         , td []
-            [ text (String.fromFloat node.fal) ]
+            [ text (String.fromFloat node.falsehood) ]
         , td []
             [ button
                 [ class "close"

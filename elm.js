@@ -5152,11 +5152,11 @@ var $author$project$Main$NeutroField = F2(
 		return {$: 'NeutroField', a: a, b: b};
 	});
 var $author$project$Main$defaultForm = {
-	fal: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, ''),
+	falsehood: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, ''),
 	id: 0,
-	ind: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, ''),
+	indeterminacy: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, ''),
 	label: '',
-	tru: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, '')
+	truth: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, '')
 };
 var $author$project$Main$emptyModel = {form: $author$project$Main$defaultForm, nodes: _List_Nil};
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
@@ -5219,20 +5219,20 @@ var $author$project$Main$setStorage = _Platform_outgoingPort(
 				_List_fromArray(
 					[
 						_Utils_Tuple2(
-						'fal',
-						$elm$json$Json$Encode$float($.fal)),
+						'falsehood',
+						$elm$json$Json$Encode$float($.falsehood)),
 						_Utils_Tuple2(
 						'id',
 						$elm$json$Json$Encode$int($.id)),
 						_Utils_Tuple2(
-						'ind',
-						$elm$json$Json$Encode$float($.ind)),
+						'indeterminacy',
+						$elm$json$Json$Encode$float($.indeterminacy)),
 						_Utils_Tuple2(
 						'label',
 						$elm$json$Json$Encode$string($.label)),
 						_Utils_Tuple2(
-						'tru',
-						$elm$json$Json$Encode$float($.tru))
+						'truth',
+						$elm$json$Json$Encode$float($.truth))
 					]));
 		}));
 var $elm$core$List$filter = F2(
@@ -5276,27 +5276,27 @@ var $author$project$Main$update = F2(
 				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 			case 'Add':
 				var newNode = {
-					fal: A2(
+					falsehood: A2(
 						$elm$core$Maybe$withDefault,
 						0.0,
 						$elm$core$String$toFloat(
-							$author$project$Main$neutroFieldToString(model.form.fal))),
+							$author$project$Main$neutroFieldToString(model.form.falsehood))),
 					id: model.form.id,
-					ind: A2(
+					indeterminacy: A2(
 						$elm$core$Maybe$withDefault,
 						0.0,
 						$elm$core$String$toFloat(
-							$author$project$Main$neutroFieldToString(model.form.ind))),
+							$author$project$Main$neutroFieldToString(model.form.indeterminacy))),
 					label: model.form.label,
-					tru: A2(
+					truth: A2(
 						$elm$core$Maybe$withDefault,
 						0.0,
 						$elm$core$String$toFloat(
-							$author$project$Main$neutroFieldToString(model.form.tru)))
+							$author$project$Main$neutroFieldToString(model.form.truth)))
 				};
 				var newForm = _Utils_update(
 					$author$project$Main$defaultForm,
-					{id: model.form.id + 1});
+					{id: 0});
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
@@ -5333,7 +5333,7 @@ var $author$project$Main$update = F2(
 						model,
 						{form: newForm}),
 					$elm$core$Platform$Cmd$none);
-			case 'UpdateTru':
+			case 'UpdateTruth':
 				var newTruth = msg.a;
 				var oldForm = model.form;
 				var newForm = function () {
@@ -5341,7 +5341,7 @@ var $author$project$Main$update = F2(
 						return _Utils_update(
 							oldForm,
 							{
-								tru: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, newTruth)
+								truth: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, newTruth)
 							});
 					} else {
 						var maybeTruth = $elm$core$String$toFloat(newTruth);
@@ -5349,16 +5349,16 @@ var $author$project$Main$update = F2(
 							return _Utils_update(
 								oldForm,
 								{
-									tru: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, newTruth)
+									truth: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, newTruth)
 								});
 						} else {
-							var p = maybeTruth.a;
+							var t = maybeTruth.a;
 							return _Utils_update(
 								oldForm,
 								{
-									tru: A2(
+									truth: A2(
 										$author$project$Main$NeutroField,
-										$elm$core$Maybe$Just(p),
+										$elm$core$Maybe$Just(t),
 										newTruth)
 								});
 						}
@@ -5369,7 +5369,7 @@ var $author$project$Main$update = F2(
 						model,
 						{form: newForm}),
 					$elm$core$Platform$Cmd$none);
-			case 'UpdateInd':
+			case 'UpdateIndeterminacy':
 				var newIndeterminacy = msg.a;
 				var oldForm = model.form;
 				var newForm = function () {
@@ -5377,7 +5377,7 @@ var $author$project$Main$update = F2(
 						return _Utils_update(
 							oldForm,
 							{
-								ind: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, newIndeterminacy)
+								indeterminacy: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, newIndeterminacy)
 							});
 					} else {
 						var maybeIndeterminacy = $elm$core$String$toFloat(newIndeterminacy);
@@ -5385,14 +5385,14 @@ var $author$project$Main$update = F2(
 							return _Utils_update(
 								oldForm,
 								{
-									ind: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, newIndeterminacy)
+									indeterminacy: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, newIndeterminacy)
 								});
 						} else {
 							var p = maybeIndeterminacy.a;
 							return _Utils_update(
 								oldForm,
 								{
-									ind: A2(
+									indeterminacy: A2(
 										$author$project$Main$NeutroField,
 										$elm$core$Maybe$Just(p),
 										newIndeterminacy)
@@ -5413,7 +5413,7 @@ var $author$project$Main$update = F2(
 						return _Utils_update(
 							oldForm,
 							{
-								fal: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, newFalsehood)
+								falsehood: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, newFalsehood)
 							});
 					} else {
 						var maybeFalsehood = $elm$core$String$toFloat(newFalsehood);
@@ -5421,14 +5421,14 @@ var $author$project$Main$update = F2(
 							return _Utils_update(
 								oldForm,
 								{
-									fal: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, newFalsehood)
+									falsehood: A2($author$project$Main$NeutroField, $elm$core$Maybe$Nothing, newFalsehood)
 								});
 						} else {
 							var p = maybeFalsehood.a;
 							return _Utils_update(
 								oldForm,
 								{
-									fal: A2(
+									falsehood: A2(
 										$author$project$Main$NeutroField,
 										$elm$core$Maybe$Just(p),
 										newFalsehood)
@@ -5501,17 +5501,17 @@ var $elm$html$Html$Events$onClick = function (msg) {
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
-var $author$project$Main$UpdateFal = function (a) {
-	return {$: 'UpdateFal', a: a};
+var $author$project$Main$UpdateFalsehood = function (a) {
+	return {$: 'UpdateFalsehood', a: a};
 };
-var $author$project$Main$UpdateInd = function (a) {
-	return {$: 'UpdateInd', a: a};
+var $author$project$Main$UpdateIndeterminacy = function (a) {
+	return {$: 'UpdateIndeterminacy', a: a};
 };
 var $author$project$Main$UpdateLabel = function (a) {
 	return {$: 'UpdateLabel', a: a};
 };
-var $author$project$Main$UpdateTru = function (a) {
-	return {$: 'UpdateTru', a: a};
+var $author$project$Main$UpdateTruth = function (a) {
+	return {$: 'UpdateTruth', a: a};
 };
 var $elm$html$Html$Attributes$autofocus = $elm$html$Html$Attributes$boolProperty('autofocus');
 var $elm$html$Html$input = _VirtualDom_node('input');
@@ -5576,8 +5576,8 @@ var $author$project$Main$viewInput = function (node) {
 						$elm$html$Html$Attributes$placeholder('Truth'),
 						$elm$html$Html$Attributes$autofocus(true),
 						$elm$html$Html$Attributes$value(
-						$author$project$Main$neutroFieldToString(node.tru)),
-						$elm$html$Html$Events$onInput($author$project$Main$UpdateTru)
+						$author$project$Main$neutroFieldToString(node.truth)),
+						$elm$html$Html$Events$onInput($author$project$Main$UpdateTruth)
 					]),
 				_List_Nil),
 				A2(
@@ -5588,8 +5588,8 @@ var $author$project$Main$viewInput = function (node) {
 						$elm$html$Html$Attributes$placeholder('Indeterminacy'),
 						$elm$html$Html$Attributes$autofocus(true),
 						$elm$html$Html$Attributes$value(
-						$author$project$Main$neutroFieldToString(node.ind)),
-						$elm$html$Html$Events$onInput($author$project$Main$UpdateInd)
+						$author$project$Main$neutroFieldToString(node.indeterminacy)),
+						$elm$html$Html$Events$onInput($author$project$Main$UpdateIndeterminacy)
 					]),
 				_List_Nil),
 				A2(
@@ -5600,8 +5600,8 @@ var $author$project$Main$viewInput = function (node) {
 						$elm$html$Html$Attributes$placeholder('Falsehood'),
 						$elm$html$Html$Attributes$autofocus(true),
 						$elm$html$Html$Attributes$value(
-						$author$project$Main$neutroFieldToString(node.fal)),
-						$elm$html$Html$Events$onInput($author$project$Main$UpdateFal)
+						$author$project$Main$neutroFieldToString(node.falsehood)),
+						$elm$html$Html$Events$onInput($author$project$Main$UpdateFalsehood)
 					]),
 				_List_Nil)
 			]));
@@ -5629,10 +5629,7 @@ var $author$project$Main$viewNode = function (node) {
 			[
 				A2(
 				$elm$html$Html$td,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$scope('row')
-					]),
+				_List_Nil,
 				_List_fromArray(
 					[
 						$elm$html$Html$text(
@@ -5651,7 +5648,7 @@ var $author$project$Main$viewNode = function (node) {
 				_List_fromArray(
 					[
 						$elm$html$Html$text(
-						$elm$core$String$fromFloat(node.tru))
+						$elm$core$String$fromFloat(node.truth))
 					])),
 				A2(
 				$elm$html$Html$td,
@@ -5659,7 +5656,7 @@ var $author$project$Main$viewNode = function (node) {
 				_List_fromArray(
 					[
 						$elm$html$Html$text(
-						$elm$core$String$fromFloat(node.ind))
+						$elm$core$String$fromFloat(node.indeterminacy))
 					])),
 				A2(
 				$elm$html$Html$td,
@@ -5667,7 +5664,7 @@ var $author$project$Main$viewNode = function (node) {
 				_List_fromArray(
 					[
 						$elm$html$Html$text(
-						$elm$core$String$fromFloat(node.fal))
+						$elm$core$String$fromFloat(node.falsehood))
 					])),
 				A2(
 				$elm$html$Html$td,
@@ -5717,7 +5714,7 @@ var $author$project$Main$viewNodes = function (nodes) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Node Id')
+								$elm$html$Html$text('Node')
 							])),
 						A2(
 						$elm$html$Html$th,
@@ -5781,7 +5778,7 @@ var $author$project$Main$view = function (model) {
 		$elm$html$Html$div,
 		_List_fromArray(
 			[
-				$elm$html$Html$Attributes$class('container-fluid min-vh-100')
+				$elm$html$Html$Attributes$class('app')
 			]),
 		_List_fromArray(
 			[
@@ -5789,55 +5786,46 @@ var $author$project$Main$view = function (model) {
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('row')
+						$elm$html$Html$Attributes$class('col-4')
 					]),
 				_List_fromArray(
 					[
 						A2(
-						$elm$html$Html$div,
+						$elm$html$Html$h3,
 						_List_fromArray(
 							[
-								$elm$html$Html$Attributes$class('col-4')
+								$elm$html$Html$Attributes$class('title m-3')
 							]),
 						_List_fromArray(
 							[
-								A2(
-								$elm$html$Html$h3,
-								_List_fromArray(
-									[
-										$elm$html$Html$Attributes$class('title')
-									]),
-								_List_fromArray(
-									[
-										$elm$html$Html$text('Node Input:')
-									])),
-								$author$project$Main$viewInput(model.form),
-								A2(
-								$elm$html$Html$button,
-								_List_fromArray(
-									[
-										$elm$html$Html$Attributes$type_('button'),
-										$elm$html$Html$Attributes$class('btn btn-primary mb-3'),
-										$elm$html$Html$Events$onClick($author$project$Main$Add),
-										$elm$html$Html$Attributes$disabled(
-										$author$project$Main$checkFormIsEmpty(model))
-									]),
-								_List_fromArray(
-									[
-										$elm$html$Html$text('Add Node')
-									])),
-								$author$project$Main$viewNodes(model.nodes)
+								$elm$html$Html$text('Node Input:')
 							])),
+						$author$project$Main$viewInput(model.form),
 						A2(
-						$elm$html$Html$div,
+						$elm$html$Html$button,
 						_List_fromArray(
 							[
-								$elm$html$Html$Attributes$class('col-8 bg-dark text-white')
+								$elm$html$Html$Attributes$type_('button'),
+								$elm$html$Html$Attributes$class('btn btn-primary m-3'),
+								$elm$html$Html$Events$onClick($author$project$Main$Add),
+								$elm$html$Html$Attributes$disabled(
+								$author$project$Main$checkFormIsEmpty(model))
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Canvas')
-							]))
+								$elm$html$Html$text('Add Node')
+							])),
+						$author$project$Main$viewNodes(model.nodes)
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('col-8 bg-dark text-white')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Canvas')
 					]))
 			]));
 };
@@ -5869,29 +5857,29 @@ _Platform_export({'Main':{'init':$author$project$Main$main(
 				$elm$json$Json$Decode$list(
 					A2(
 						$elm$json$Json$Decode$andThen,
-						function (tru) {
+						function (truth) {
 							return A2(
 								$elm$json$Json$Decode$andThen,
 								function (label) {
 									return A2(
 										$elm$json$Json$Decode$andThen,
-										function (ind) {
+										function (indeterminacy) {
 											return A2(
 												$elm$json$Json$Decode$andThen,
 												function (id) {
 													return A2(
 														$elm$json$Json$Decode$andThen,
-														function (fal) {
+														function (falsehood) {
 															return $elm$json$Json$Decode$succeed(
-																{fal: fal, id: id, ind: ind, label: label, tru: tru});
+																{falsehood: falsehood, id: id, indeterminacy: indeterminacy, label: label, truth: truth});
 														},
-														A2($elm$json$Json$Decode$field, 'fal', $elm$json$Json$Decode$float));
+														A2($elm$json$Json$Decode$field, 'falsehood', $elm$json$Json$Decode$float));
 												},
 												A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$int));
 										},
-										A2($elm$json$Json$Decode$field, 'ind', $elm$json$Json$Decode$float));
+										A2($elm$json$Json$Decode$field, 'indeterminacy', $elm$json$Json$Decode$float));
 								},
 								A2($elm$json$Json$Decode$field, 'label', $elm$json$Json$Decode$string));
 						},
-						A2($elm$json$Json$Decode$field, 'tru', $elm$json$Json$Decode$float))))
+						A2($elm$json$Json$Decode$field, 'truth', $elm$json$Json$Decode$float))))
 			])))(0)}});}(this));
