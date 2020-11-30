@@ -103,7 +103,7 @@ updateWithStorage msg model =
 
 emptyModel : Model
 emptyModel =
-    { nodes = []
+    { nodes = neutroNodes
     , form = defaultForm
     }
 
@@ -540,3 +540,46 @@ checkFormIsEmpty model =
 
     else
         False
+
+
+neutroNodes : List Node
+neutroNodes =
+    [ { id = 0
+      , label = "A"
+      , truth = 0.3
+      , indeterminacy = 0.2
+      , falsehood = 0.3
+      }
+    , { id = 0
+      , label = "B"
+      , truth = 0.3
+      , indeterminacy = 0.2
+      , falsehood = 0.3
+      }
+    , { id = 0
+      , label = "C"
+      , truth = 0.3
+      , indeterminacy = 0.2
+      , falsehood = 0.3
+      }
+    ]
+
+
+
+-- neutroEdges : List NeutroEdge
+-- neutroEdges =
+--     [ { id = 0, from = 0, to = 1 } -- A->B
+--     , { id = 0, from = 0, to = 2 } -- A->C
+--     , { id = 0, from = 1, to = 2 } -- B->C
+--     ]
+-- neutroGraph : Graph String ()
+-- neutroGraph =
+--     let
+--         nodeList =
+--             List.map (\node -> node.label) neutroNodes
+--         edgeList =
+--             List.map (\edge -> ( edge.from, edge.to )) neutroEdges
+--     in
+--     Graph.fromNodeLabelsAndEdgePairs
+--         nodeList
+--         edgeList
