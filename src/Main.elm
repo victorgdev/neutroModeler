@@ -22,6 +22,29 @@ import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..))
 
 
+w : Float
+w =
+    990
+
+
+h : Float
+h =
+    504
+
+
+colorScale : SequentialScale Color
+colorScale =
+    Scale.sequential Scale.Color.viridisInterpolator ( 200, 700 )
+
+
+type alias CustomNode =
+    { rank : Int, name : String }
+
+
+type alias Entity =
+    Force.Entity NodeId { value : CustomNode }
+
+
 main : Program (Maybe (List Node)) Model Msg
 main =
     Browser.document
@@ -95,11 +118,143 @@ defaultForm =
     }
 
 
+initGraph : Graph Entity ()
+initGraph =
+    let
+        graph =
+            Graph.mapContexts
+                (\({ node, incoming, outgoing } as ctx) ->
+                    { incoming = incoming
+                    , outgoing = outgoing
+                    , node =
+                        { label =
+                            Force.entity node.id
+                                (CustomNode
+                                    (IntDict.size incoming + IntDict.size outgoing)
+                                    node.label
+                                )
+                        , id = node.id
+                        }
+                    }
+                )
+                miserablesGraph
+
+        links =
+            graph
+                |> Graph.edges
+                |> List.map
+                    (\{ from, to } ->
+                        { source = from
+                        , target = to
+                        , distance = 30
+                        , strength = Nothing
+                        }
+                    )
+
+        forces =
+            [ Force.customLinks 1 links
+            , Force.manyBodyStrength -30 <| List.map .id <| Graph.nodes graph
+            , Force.center (w / 2) (h / 2)
+            ]
+    in
+    Graph.nodes graph
+        |> List.map .label
+        |> Force.computeSimulation (Force.simulation forces)
+        |> updateGraphWithList graph
+
+
 init : Maybe (List Node) -> ( Model, Cmd Msg )
 init maybeNodes =
     ( { emptyModel | nodes = Maybe.withDefault [] maybeNodes }
     , Cmd.none
     )
+
+
+updateGraphWithList : Graph Entity () -> List Entity -> Graph Entity ()
+updateGraphWithList =
+    let
+        graphUpdater value =
+            Maybe.map (\ctx -> updateContextWithValue ctx value)
+    in
+    List.foldr (\node graph -> Graph.update node.id (graphUpdater node) graph)
+
+
+updateContextWithValue nodeCtx value =
+    let
+        node =
+            nodeCtx.node
+    in
+    { nodeCtx | node = { node | label = value } }
+
+
+linkElement : Graph Entity () -> Edge () -> Svg msg
+linkElement graph edge =
+    let
+        retrieveEntity =
+            Maybe.withDefault (Force.entity 0 (CustomNode 0 "")) << Maybe.map (.node >> .label)
+
+        source =
+            retrieveEntity <| Graph.get edge.from graph
+
+        target =
+            retrieveEntity <| Graph.get edge.to graph
+    in
+    line
+        [ strokeWidth 1
+        , stroke <| Paint <| Scale.convert colorScale source.x
+        , x1 source.x
+        , y1 source.y
+        , x2 target.x
+        , y2 target.y
+        ]
+        []
+
+
+hexagon ( x, y ) size attrs =
+    let
+        angle =
+            2 * pi / 6
+
+        p =
+            range 0 6
+                |> List.map toFloat
+                |> List.map (\a -> ( x + cos (a * angle) * size, y + sin (a * angle) * size ))
+                |> points
+    in
+    polygon
+        (p :: attrs)
+
+
+nodeSize size node =
+    hexagon ( node.x, node.y )
+        size
+        [ fill <| Paint <| Scale.convert colorScale node.x
+        ]
+        [ TypedSvg.title [] [ text node.value.name ] ]
+
+
+nodeElement node =
+    if node.label.value.rank < 5 then
+        nodeSize 4 node.label
+
+    else if node.label.value.rank < 9 then
+        nodeSize 7 node.label
+
+    else if modBy 2 node.label.value.rank == 0 then
+        g []
+            [ nodeSize 9 node.label
+            , circle
+                [ r 12
+                , cx node.label.x
+                , cy node.label.y
+                , fill PaintNone
+                , stroke <| Paint <| Scale.convert colorScale node.label.x
+                ]
+                []
+            ]
+
+    else
+        nodeSize 10 node.label
 
 
 
@@ -249,7 +404,28 @@ view model =
                 [ text "Add Node" ]
             , viewNodes model.nodes
             ]
-        , div [ class "col-8 bg-dark text-white" ] [ text "Canvas" ]
+        , div [ class "col-8 bg-dark text-white" ]
+            [ text "Canvas"
+            , svg [ viewBox 0 0 w h ]
+                [ g [ TypedSvg.Attributes.class [ "links" ] ] <| List.map (linkElement initGraph) <| Graph.edges initGraph
+                , g [ TypedSvg.Attributes.class [ "nodes" ] ] <| List.map nodeElement <| Graph.nodes initGraph
+                ]
+            ]
+        ]
+
+
+miserablesGraph : Graph String ()
+miserablesGraph =
+    Graph.fromNodeLabelsAndEdgePairs
+        [ "A"
+        , "B"
+        , "C"
+        , "D"
+        , "E"
+        , "F"
+        ]
+        [ ( 0, 1 ) -- A-B
+        , ( 0, 2 ) -- A-C
         ]
 
 
