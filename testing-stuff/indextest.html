@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>NeutroModeler</title>
+   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
+</head>
+<body>
+   <div class="container-fluid">
+      <div class="row">
+         <div class="col-4">
+            <ul class="nav nav-tabs">
+               <li class="nav-item" ><a class="nav-link">Node</a></li>
+               <li class="nav-item" ><a class="nav-link">Edge</a></li>
+               <li class="nav-item" ><a class="nav-link">Simulation</a></li>
+            </ul>
+            <div class="form">
+               <h3 class="form-title">Input Nodes:</h3>
+               <form class="form">
+                  <input class="d-block p-2 mb-3" type="text" id="label-input" placeholder="Label">
+                  <input type="text" id="tru-input" placeholder="Truth">
+                  <input type="text" id="ind-input" placeholder="Inderteminacy">
+                  <input type="text" id="fal-input" placeholder="Falsehood">
+               </form>
+               <button class="primary-button">Add Node</button>
+            </div>
+          
+            <div id="Edge">
+               <table class="table">
+                  <tr>
+                     <th scope="col">Id</th>
+                     <th scope="col">Label</th>
+                     <th scope="col">Tru</th>
+                     <th scope="col">Ind</th>
+                     <th scope="col">Fal</th>
+                     <th scope="col">Remove</th>
+                  </tr>
+                  <tr>
+                     <th scope="col">1</th>
+                     <td>Node 0</td>
+                     <td>2</td>
+                     <td>2</td>
+                     <td>2</td>
+                     <td><button type="button" class="close"><span>&times;</span></button></td>
+                  </tr>
+               </table>
+            </div>
+         </div>
+         <div class="col-8">
+            Graph
+         </div>
+      </div>
+   </div>
+</body>
+</html>
