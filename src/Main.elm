@@ -22,14 +22,6 @@ import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..))
 
 
-type alias CustomNode =
-    { rank : Int, name : String }
-
-
-type alias Entity =
-    Force.Entity NodeId { value : CustomNode }
-
-
 
 -- MODEL
 
@@ -41,9 +33,31 @@ type alias Model =
     }
 
 
+type alias Entity =
+    Force.Entity NodeId { value : CustomNode }
+
+
+type alias CustomNode =
+    { rank : Int, name : String }
+
+
+type alias NodeId =
+    Int
+
+
 type alias Node =
-    { id : Int
+    { id : NodeId
     , label : String
+    , truth : Float
+    , indeterminacy : Float
+    , falsehood : Float
+    }
+
+
+type alias NeutroEdge =
+    { id : Int
+    , from : NodeId
+    , to : NodeId
     , truth : Float
     , indeterminacy : Float
     , falsehood : Float
@@ -180,9 +194,33 @@ initModel =
           }
         ]
     , edges =
-        [ { id = 0, from = 0, to = 1 } -- A->B
-        , { id = 0, from = 0, to = 2 } -- A->C
-        , { id = 0, from = 1, to = 2 } -- B->C
+        [ { id = 0
+          , from = 0
+          , to = 1
+          , truth = 0.3
+          , indeterminacy = 0.2
+          , falsehood = 0.3
+          }
+
+        -- A->B
+        , { id = 0
+          , from = 0
+          , to = 2
+          , truth = 0.3
+          , indeterminacy = 0.2
+          , falsehood = 0.3
+          }
+
+        -- A->C
+        , { id = 0
+          , from = 1
+          , to = 2
+          , truth = 0.3
+          , indeterminacy = 0.2
+          , falsehood = 0.3
+          }
+
+        -- B->C
         ]
     , form = defaultForm
     }
@@ -289,7 +327,7 @@ nodeElement node =
 type Msg
     = NoOp
     | Add
-    | Delete Int
+    | Delete String
     | UpdateLabel String
     | UpdateTruth String
     | UpdateIndeterminacy String
@@ -323,8 +361,8 @@ update msg model =
             , Cmd.none
             )
 
-        Delete id ->
-            ( { model | nodes = List.filter (\n -> n.id /= id) model.nodes }
+        Delete label ->
+            ( { model | nodes = List.filter (\n -> n.label /= label) model.nodes }
             , Cmd.none
             )
 
@@ -417,9 +455,9 @@ view model =
     div
         [ class "app" ]
         [ div
-            [ class "col-4" ]
+            [ class "bar-scroll col-3 border-right border-info" ]
             [ h3 [ class "title m-3" ] [ text "Node Input:" ]
-            , viewInput model.form
+            , viewNodeForm model.form
             , button
                 [ type_ "button"
                 , class "btn btn-primary m-3"
@@ -427,9 +465,9 @@ view model =
                 , disabled (checkFormIsEmpty model)
                 ]
                 [ text "Add Node" ]
-            , viewNodes model.nodes
+            , viewEdgeForm
             ]
-        , div [ class "col-8 bg-dark text-white" ]
+        , div [ class "col-6 bg-dark text-white" ]
             [ text "Canvas"
             , svg [ viewBox 0 0 w h ]
                 [ g [ TypedSvg.Attributes.class [ "links" ] ] <|
@@ -440,26 +478,19 @@ view model =
                         Graph.nodes (initGraph model)
                 ]
             ]
+        , div [ class "col-3 border-left border-info" ]
+            [ h3 [ class "title m-3" ] [ text "Nodes:" ]
+            , viewNodes model.nodes
+            , div [ class "border-top" ]
+                [ h3 [ class "title m-3" ] [ text "Edges:" ]
+                , viewEdges model.edges
+                ]
+            ]
         ]
 
 
-testGraph : Graph String ()
-testGraph =
-    Graph.fromNodeLabelsAndEdgePairs
-        [ "A"
-        , "B"
-        , "C"
-        , "D"
-        , "E"
-        , "F"
-        ]
-        [ ( 0, 1 ) -- A-B
-        , ( 0, 2 ) -- A-C
-        ]
-
-
-viewInput : Form -> Html Msg
-viewInput node =
+viewNodeForm : Form -> Html Msg
+viewNodeForm node =
     div [ class "col" ]
         [ input
             [ class "form-control mb-3"
@@ -496,27 +527,17 @@ viewInput node =
         ]
 
 
-neutroFieldToString : NeutroField -> String
-neutroFieldToString neutroField =
-    case neutroField of
-        NeutroField Nothing neutro ->
-            neutro
-
-        NeutroField (Just _) neutro ->
-            neutro
-
-
 viewNodes : List Node -> Html Msg
 viewNodes nodes =
     table
-        [ class "table" ]
+        [ class "table m-3" ]
         (tr
             []
-            [ th [ scope "col" ] [ text "Label" ]
-            , th [ scope "col" ] [ text "Tru" ]
-            , th [ scope "col" ] [ text "Ind" ]
-            , th [ scope "col" ] [ text "Fal" ]
-            , th [ scope "col" ] [ text "Remove" ]
+            [ th [ class "text-left", scope "col" ] [ text "Label" ]
+            , th [ class "text-left", scope "col" ] [ text "Tru" ]
+            , th [ class "text-left", scope "col" ] [ text "Ind" ]
+            , th [ class "text-left", scope "col" ] [ text "Fal" ]
+            , th [ class "text-left", scope "col" ] [ text "Remove" ]
             ]
             :: List.map viewNode nodes
         )
@@ -530,43 +551,125 @@ viewKeyedNode node =
 viewNode : Node -> Html Msg
 viewNode node =
     tr []
-        [ td [] [ text node.label ]
-        , td [] [ text (String.fromFloat node.truth) ]
-        , td [] [ text (String.fromFloat node.indeterminacy) ]
-        , td [] [ text (String.fromFloat node.falsehood) ]
-        , td []
+        [ td [ class "text-left" ] [ text node.label ]
+        , td [ class "text-left" ] [ text (String.fromFloat node.truth) ]
+        , td [ class "text-left" ] [ text (String.fromFloat node.indeterminacy) ]
+        , td [ class "text-left" ] [ text (String.fromFloat node.falsehood) ]
+        , td [ class "text-left" ]
             [ button
-                [ class "close"
+                [ class "btn btn text-left"
                 , type_ "button"
-                , onClick (Delete node.id)
+                , onClick (Delete node.label)
                 ]
-                [ text "x" ]
+                [ text "X" ]
             ]
         ]
 
 
+viewEdgeForm : Html Msg
+viewEdgeForm =
+    div [ class "col border-top" ]
+        [ h3 [ class "title mt-3" ] [ text "Edge Input:" ]
+        , div [ class "row" ]
+            [ div
+                [ class "dropdown m-3" ]
+                [ h5 [ class "title" ] [ text "Origin" ]
+                , button
+                    [ type_ "button"
+                    , class "btn btn-secondary dropdown-toggle"
+                    , id "dropdownMenuOffset"
+                    ]
+                    [ span [ class "sr-only" ] [ text "Destiny" ] ]
+                ]
+            , div
+                [ class "dropdown m-3" ]
+                [ h5 [ class "title" ] [ text "Destiny" ]
+                , button
+                    [ type_ "button"
+                    , class "btn btn-secondary dropdown-toggle"
+                    , id "dropdownMenuOffset"
+                    ]
+                    [ span [ class "sr-only" ] [ text "Destiny" ] ]
+                ]
+            ]
+        , input
+            [ class "form-control mb-3"
+            , placeholder "Truth"
+            , autofocus True
 
--- HANDLERS/HELPERS
+            -- , value (neutroFieldToString node.truth)
+            -- , onInput UpdateTruth
+            ]
+            []
+        , input
+            [ class "form-control mb-3"
+            , placeholder "Indeterminacy"
+            , autofocus True
+
+            -- , value (neutroFieldToString node.indeterminacy)
+            -- , onInput UpdateIndeterminacy
+            ]
+            []
+        , input
+            [ class "form-control mb-3"
+            , placeholder "Falsehood"
+            , autofocus True
+
+            -- , value (neutroFieldToString node.falsehood)
+            -- , onInput UpdateFalsehood
+            ]
+            []
+        , button
+            [ type_ "button"
+            , class "btn btn-primary"
+
+            -- , onClick Add
+            , disabled True
+            ]
+            [ text "Add Edge" ]
+        ]
 
 
-checkFormIsEmpty : Model -> Bool
-checkFormIsEmpty model =
-    if model.form.label == "" then
-        True
+viewEdges : List NeutroEdge -> Html Msg
+viewEdges edges =
+    table
+        [ class "table m-3" ]
+        (tr
+            []
+            [ th [ class "text-left", scope "col" ] [ text "From" ]
+            , th [ class "text-left", scope "col" ] [ text "To" ]
+            , th [ class "text-left", scope "col" ] [ text "Tru" ]
+            , th [ class "text-left", scope "col" ] [ text "Ind" ]
+            , th [ class "text-left", scope "col" ] [ text "Fal" ]
+            , th [ class "text-left", scope "col" ] [ text "Remove" ]
+            ]
+            :: List.map viewEdge edges
+        )
 
-    else
-        False
+
+viewKeyedEdge : NeutroEdge -> ( String, Html Msg )
+viewKeyedEdge edge =
+    ( String.fromInt edge.id, viewEdge edge )
 
 
-type alias NodeId =
-    Int
+viewEdge : NeutroEdge -> Html Msg
+viewEdge edge =
+    tr []
+        [ td [ class "text-left" ] [ text (String.fromInt edge.from) ]
+        , td [ class "text-left" ] [ text (String.fromInt edge.to) ]
+        , td [ class "text-left" ] [ text (String.fromFloat edge.truth) ]
+        , td [ class "text-left" ] [ text (String.fromFloat edge.indeterminacy) ]
+        , td [ class "text-left" ] [ text (String.fromFloat edge.falsehood) ]
+        , td [ class "text-left" ]
+            [ button
+                [ class "btn btn text-left"
+                , type_ "button"
 
-
-type alias NeutroEdge =
-    { id : Int
-    , from : NodeId
-    , to : NodeId
-    }
+                -- , onClick (Delete (String.FromInt edge.id))
+                ]
+                [ text "X" ]
+            ]
+        ]
 
 
 neutroGraph : Model -> Graph String ()
@@ -581,3 +684,26 @@ neutroGraph model =
     Graph.fromNodeLabelsAndEdgePairs
         nodeList
         edgeList
+
+
+
+-- HANDLERS/HELPERS
+
+
+neutroFieldToString : NeutroField -> String
+neutroFieldToString neutroField =
+    case neutroField of
+        NeutroField Nothing neutro ->
+            neutro
+
+        NeutroField (Just _) neutro ->
+            neutro
+
+
+checkFormIsEmpty : Model -> Bool
+checkFormIsEmpty model =
+    if model.form.label == "" then
+        True
+
+    else
+        False
