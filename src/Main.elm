@@ -22,51 +22,12 @@ import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..))
 
 
-w : Float
-w =
-    990
-
-
-h : Float
-h =
-    504
-
-
-colorScale : SequentialScale Color
-colorScale =
-    Scale.sequential Scale.Color.viridisInterpolator ( 200, 700 )
-
-
 type alias CustomNode =
     { rank : Int, name : String }
 
 
 type alias Entity =
     Force.Entity NodeId { value : CustomNode }
-
-
-main : Program (Maybe (List Node)) Model Msg
-main =
-    Browser.document
-        { init = init
-        , view = \model -> { title = "NeutroModeler", body = [ view model ] }
-        , update = updateWithStorage
-        , subscriptions = \_ -> Sub.none
-        }
-
-
-port setStorage : List Node -> Cmd msg
-
-
-updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
-updateWithStorage msg model =
-    let
-        ( newModel, cmds ) =
-            update msg model
-    in
-    ( newModel
-    , Cmd.batch [ setStorage newModel.nodes, cmds ]
-    )
 
 
 
@@ -99,6 +60,45 @@ type alias Form =
     , indeterminacy : NeutroField
     , falsehood : NeutroField
     }
+
+
+w : Float
+w =
+    990
+
+
+h : Float
+h =
+    504
+
+
+colorScale : SequentialScale Color
+colorScale =
+    Scale.sequential Scale.Color.viridisInterpolator ( 200, 700 )
+
+
+main : Program (Maybe (List Node)) Model Msg
+main =
+    Browser.document
+        { init = init
+        , view = \model -> { title = "NeutroModeler", body = [ view model ] }
+        , update = updateWithStorage
+        , subscriptions = \_ -> Sub.none
+        }
+
+
+port setStorage : List Node -> Cmd msg
+
+
+updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
+updateWithStorage msg model =
+    let
+        ( newModel, cmds ) =
+            update msg model
+    in
+    ( newModel
+    , Cmd.batch [ setStorage newModel.nodes, cmds ]
+    )
 
 
 emptyModel : Model
@@ -137,7 +137,7 @@ initGraph =
                         }
                     }
                 )
-                miserablesGraph
+                testGraph
 
         links =
             graph
@@ -414,8 +414,8 @@ view model =
         ]
 
 
-miserablesGraph : Graph String ()
-miserablesGraph =
+testGraph : Graph String ()
+testGraph =
     Graph.fromNodeLabelsAndEdgePairs
         [ "A"
         , "B"
@@ -531,19 +531,6 @@ viewNode node =
 
 
 -- HANDLERS/HELPERS
-
-
-onEnter : Msg -> Attribute Msg
-onEnter msg =
-    let
-        isEnter code =
-            if code == 13 then
-                Json.succeed msg
-
-            else
-                Json.fail "not ENTER"
-    in
-    on "keydown" (Json.andThen isEnter keyCode)
 
 
 checkFormIsEmpty : Model -> Bool
