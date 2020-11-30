@@ -36,6 +36,7 @@ type alias Entity =
 
 type alias Model =
     { nodes : List Node
+    , edges : List NeutroEdge
     , form : Form
     }
 
@@ -77,7 +78,7 @@ colorScale =
     Scale.sequential Scale.Color.viridisInterpolator ( 200, 700 )
 
 
-main : Program (Maybe (List Node)) Model Msg
+main : Program () Model Msg
 main =
     Browser.document
         { init = init
@@ -101,13 +102,6 @@ updateWithStorage msg model =
     )
 
 
-emptyModel : Model
-emptyModel =
-    { nodes = neutroNodes
-    , form = defaultForm
-    }
-
-
 defaultForm : Form
 defaultForm =
     { id = 0
@@ -118,8 +112,8 @@ defaultForm =
     }
 
 
-initGraph : Graph Entity ()
-initGraph =
+initGraph : Model -> Graph Entity ()
+initGraph model =
     let
         graph =
             Graph.mapContexts
@@ -137,7 +131,7 @@ initGraph =
                         }
                     }
                 )
-                testGraph
+                (neutroGraph model)
 
         links =
             graph
@@ -163,9 +157,40 @@ initGraph =
         |> updateGraphWithList graph
 
 
-init : Maybe (List Node) -> ( Model, Cmd Msg )
-init maybeNodes =
-    ( { emptyModel | nodes = Maybe.withDefault [] maybeNodes }
+initModel : Model
+initModel =
+    { nodes =
+        [ { id = 0
+          , label = "A"
+          , truth = 0.3
+          , indeterminacy = 0.2
+          , falsehood = 0.3
+          }
+        , { id = 0
+          , label = "B"
+          , truth = 0.3
+          , indeterminacy = 0.2
+          , falsehood = 0.3
+          }
+        , { id = 0
+          , label = "C"
+          , truth = 0.3
+          , indeterminacy = 0.2
+          , falsehood = 0.3
+          }
+        ]
+    , edges =
+        [ { id = 0, from = 0, to = 1 } -- A->B
+        , { id = 0, from = 0, to = 2 } -- A->C
+        , { id = 0, from = 1, to = 2 } -- B->C
+        ]
+    , form = defaultForm
+    }
+
+
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( initModel
     , Cmd.none
     )
 
@@ -407,8 +432,12 @@ view model =
         , div [ class "col-8 bg-dark text-white" ]
             [ text "Canvas"
             , svg [ viewBox 0 0 w h ]
-                [ g [ TypedSvg.Attributes.class [ "links" ] ] <| List.map (linkElement initGraph) <| Graph.edges initGraph
-                , g [ TypedSvg.Attributes.class [ "nodes" ] ] <| List.map nodeElement <| Graph.nodes initGraph
+                [ g [ TypedSvg.Attributes.class [ "links" ] ] <|
+                    List.map (linkElement (initGraph model)) <|
+                        Graph.edges (initGraph model)
+                , g [ TypedSvg.Attributes.class [ "nodes" ] ] <|
+                    List.map nodeElement <|
+                        Graph.nodes (initGraph model)
                 ]
             ]
         ]
@@ -481,23 +510,16 @@ viewNodes : List Node -> Html Msg
 viewNodes nodes =
     table
         [ class "table" ]
-        [ tr
+        (tr
             []
-            [ th [ scope "col" ]
-                [ text "Node" ]
-            , th [ scope "col" ]
-                [ text "Label" ]
-            , th [ scope "col" ]
-                [ text "Tru" ]
-            , th [ scope "col" ]
-                [ text "Ind" ]
-            , th [ scope "col" ]
-                [ text "Fal" ]
-            , th [ scope "col" ]
-                [ text "Remove" ]
+            [ th [ scope "col" ] [ text "Label" ]
+            , th [ scope "col" ] [ text "Tru" ]
+            , th [ scope "col" ] [ text "Ind" ]
+            , th [ scope "col" ] [ text "Fal" ]
+            , th [ scope "col" ] [ text "Remove" ]
             ]
-        , Keyed.ul [] <| List.map viewKeyedNode nodes
-        ]
+            :: List.map viewNode nodes
+        )
 
 
 viewKeyedNode : Node -> ( String, Html Msg )
@@ -508,16 +530,10 @@ viewKeyedNode node =
 viewNode : Node -> Html Msg
 viewNode node =
     tr []
-        [ td []
-            [ text (String.fromInt node.id) ]
-        , td []
-            [ text node.label ]
-        , td []
-            [ text (String.fromFloat node.truth) ]
-        , td []
-            [ text (String.fromFloat node.indeterminacy) ]
-        , td []
-            [ text (String.fromFloat node.falsehood) ]
+        [ td [] [ text node.label ]
+        , td [] [ text (String.fromFloat node.truth) ]
+        , td [] [ text (String.fromFloat node.indeterminacy) ]
+        , td [] [ text (String.fromFloat node.falsehood) ]
         , td []
             [ button
                 [ class "close"
@@ -542,44 +558,26 @@ checkFormIsEmpty model =
         False
 
 
-neutroNodes : List Node
-neutroNodes =
-    [ { id = 0
-      , label = "A"
-      , truth = 0.3
-      , indeterminacy = 0.2
-      , falsehood = 0.3
-      }
-    , { id = 0
-      , label = "B"
-      , truth = 0.3
-      , indeterminacy = 0.2
-      , falsehood = 0.3
-      }
-    , { id = 0
-      , label = "C"
-      , truth = 0.3
-      , indeterminacy = 0.2
-      , falsehood = 0.3
-      }
-    ]
+type alias NodeId =
+    Int
 
 
+type alias NeutroEdge =
+    { id : Int
+    , from : NodeId
+    , to : NodeId
+    }
 
--- neutroEdges : List NeutroEdge
--- neutroEdges =
---     [ { id = 0, from = 0, to = 1 } -- A->B
---     , { id = 0, from = 0, to = 2 } -- A->C
---     , { id = 0, from = 1, to = 2 } -- B->C
---     ]
--- neutroGraph : Graph String ()
--- neutroGraph =
---     let
---         nodeList =
---             List.map (\node -> node.label) neutroNodes
---         edgeList =
---             List.map (\edge -> ( edge.from, edge.to )) neutroEdges
---     in
---     Graph.fromNodeLabelsAndEdgePairs
---         nodeList
---         edgeList
+
+neutroGraph : Model -> Graph String ()
+neutroGraph model =
+    let
+        nodeList =
+            List.map (\node -> node.label) model.nodes
+
+        edgeList =
+            List.map (\edge -> ( edge.from, edge.to )) model.edges
+    in
+    Graph.fromNodeLabelsAndEdgePairs
+        nodeList
+        edgeList
