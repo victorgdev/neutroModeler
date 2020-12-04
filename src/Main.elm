@@ -154,7 +154,7 @@ initGraph model =
                     (\{ from, to } ->
                         { source = from
                         , target = to
-                        , distance = 30
+                        , distance = 100
                         , strength = Nothing
                         }
                     )
@@ -263,7 +263,7 @@ linkElement graph edge =
             retrieveEntity <| Graph.get edge.to graph
     in
     line
-        [ strokeWidth 1
+        [ strokeWidth 3.5
         , stroke <| Paint <| Scale.convert colorScale source.x
         , x1 source.x
         , y1 source.y
@@ -281,7 +281,7 @@ hexagon ( x, y ) size attrs =
         p =
             range 0 6
                 |> List.map toFloat
-                |> List.map (\a -> ( x + cos (a * angle) * size, y + sin (a * angle) * size ))
+                |> List.map (\a -> ( x + cos (a * angle) * 2 * size, y + sin (a * angle) * 2 * size ))
                 |> points
     in
     polygon
@@ -454,17 +454,10 @@ view : Model -> Html Msg
 view model =
     div
         [ class "app" ]
-        [ div
+        [ viewNavBar
+        , div
             [ class "bar-scroll col-3 border-right border-info" ]
-            [ h3 [ class "title m-3" ] [ text "Node Input:" ]
-            , viewNodeForm model.form
-            , button
-                [ type_ "button"
-                , class "btn btn-primary m-3"
-                , onClick Add
-                , disabled (checkFormIsEmpty model)
-                ]
-                [ text "Add Node" ]
+            [ viewNodeForm model.form
             , viewEdgeForm
             ]
         , div [ class "col-6 bg-dark text-white" ]
@@ -489,41 +482,107 @@ view model =
         ]
 
 
+viewNavBar : Html Msg
+viewNavBar =
+    nav [ class "navbar navbar-expand-lg navbar-dark bg-dark w-100" ]
+        [ a [ class "navbar-brand ml-3", href "#" ]
+            [ img
+                [ src "https://uploads-ssl.webflow.com/5e4e898f09bfea6abb6f44be/5e4ede46179566acc07948ca_complete.svg"
+                , alt "Logo"
+                ]
+                []
+            ]
+        , button [ class "navbar-toggler", type_ "button" ]
+            [ span [ class "navbar-toggler-icon" ]
+                []
+            ]
+        , div [ class "collapse navbar-collapse", id "navbarNavAltMarkup" ]
+            [ div [ class "float-right navbar-nav" ]
+                [ a [ class "nav-item nav-link active", href "#" ]
+                    [ text "Home" ]
+                ]
+            , a [ class "nav-item nav-link", href "#" ]
+                [ text "Features" ]
+            , a [ class "nav-item nav-link", href "#" ]
+                [ text "Pricing" ]
+            , a [ class "nav-item nav-link disabled", href "#" ]
+                [ text "Disabled" ]
+            ]
+        ]
+
+
 viewNodeForm : Form -> Html Msg
 viewNodeForm node =
-    div [ class "col" ]
-        [ input
-            [ class "form-control mb-3"
-            , placeholder "Label"
-            , autofocus True
-            , value node.label
-            , onInput UpdateLabel
+    div
+        [ class "accordion"
+        , id "accordionExample"
+        ]
+        [ div
+            [ class "shadow card m-2 w-100 border-0"
+            , style "border-radius" "2rem"
+            , style "max-width" "260px"
             ]
-            []
-        , input
-            [ class "form-control mb-3"
-            , placeholder "Truth"
-            , autofocus True
-            , value (neutroFieldToString node.truth)
-            , onInput UpdateTruth
+            [ div
+                [ class "card-header bg-primary"
+                , id "headingOne"
+                , style "display" "flex"
+                ]
+                [ h4 [ class "ml-4 pt-2 text-white" ]
+                    [ text "Node" ]
+                , button [ class "btn ml-5 p-0", type_ "button" ]
+                    [ h1 [ class "m-0 ml-1 text-white" ]
+                        [ text "+" ]
+                    ]
+                ]
+            , div [ id "collapseOne", class "collapse show" ]
+                [ div [ class "card-body p-3" ]
+                    [ input
+                        [ type_ "text"
+                        , class "my-3 w-100"
+                        , placeholder "Label"
+                        , autofocus True
+                        , value node.label
+                        , onInput UpdateLabel
+                        ]
+                        []
+                    , input
+                        [ type_ "text"
+                        , class "w-25 mr-2"
+                        , placeholder "Tru"
+                        , autofocus True
+                        , value (neutroFieldToString node.truth)
+                        , onInput UpdateTruth
+                        ]
+                        []
+                    , input
+                        [ type_ "text"
+                        , class "w-25 mx-3"
+                        , placeholder "Ind"
+                        , autofocus True
+                        , value (neutroFieldToString node.indeterminacy)
+                        , onInput UpdateIndeterminacy
+                        ]
+                        []
+                    , input
+                        [ type_ "text"
+                        , class "w-25 ml-2"
+                        , placeholder "Fal"
+                        , autofocus True
+                        , value (neutroFieldToString node.falsehood)
+                        , onInput UpdateFalsehood
+                        ]
+                        []
+                    , button
+                        [ class "btn btn-outline-primary w-100 my-2 my-3"
+                        , type_ "submit"
+                        , style "border-radius" "2rem"
+                        , onClick Add
+                        , disabled (checkFormIsEmpty node)
+                        ]
+                        [ text "Add Node" ]
+                    ]
+                ]
             ]
-            []
-        , input
-            [ class "form-control mb-3"
-            , placeholder "Indeterminacy"
-            , autofocus True
-            , value (neutroFieldToString node.indeterminacy)
-            , onInput UpdateIndeterminacy
-            ]
-            []
-        , input
-            [ class "form-control mb-3"
-            , placeholder "Falsehood"
-            , autofocus True
-            , value (neutroFieldToString node.falsehood)
-            , onInput UpdateFalsehood
-            ]
-            []
         ]
 
 
@@ -543,9 +602,10 @@ viewNodes nodes =
         )
 
 
-viewKeyedNode : Node -> ( String, Html Msg )
-viewKeyedNode node =
-    ( String.fromInt node.id, viewNode node )
+
+--viewKeyedNode : Node -> ( String, Html Msg )
+--viewKeyedNode node =
+--    ( String.fromInt node.id, viewNode node )
 
 
 viewNode : Node -> Html Msg
@@ -700,9 +760,9 @@ neutroFieldToString neutroField =
             neutro
 
 
-checkFormIsEmpty : Model -> Bool
-checkFormIsEmpty model =
-    if model.form.label == "" then
+checkFormIsEmpty : Form -> Bool
+checkFormIsEmpty form =
+    if form.label == "" then
         True
 
     else
