@@ -27,9 +27,10 @@ import TypedSvg.Types exposing (Paint(..))
 
 
 type alias Model =
-    { nodes : List Node
+    { nodes : List NeutroNode
     , edges : List NeutroEdge
     , form : Form
+    , edgeForm : EdgeForm
     }
 
 
@@ -45,7 +46,7 @@ type alias NodeId =
     Int
 
 
-type alias Node =
+type alias NeutroNode =
     { id : NodeId
     , label : String
     , truth : Float
@@ -55,13 +56,21 @@ type alias Node =
 
 
 type alias NeutroEdge =
-    { id : Int
-    , from : NodeId
-    , to : NodeId
+    { edgeId : Int
+    , from : Int
+    , to : Int
     , truth : Float
     , indeterminacy : Float
     , falsehood : Float
     }
+
+
+type From
+    = From (Maybe Int) String
+
+
+type To
+    = To (Maybe Int) String
 
 
 type NeutroField
@@ -71,6 +80,16 @@ type NeutroField
 type alias Form =
     { id : Int
     , label : String
+    , truth : NeutroField
+    , indeterminacy : NeutroField
+    , falsehood : NeutroField
+    }
+
+
+type alias EdgeForm =
+    { edgeId : Int
+    , from : From
+    , to : To
     , truth : NeutroField
     , indeterminacy : NeutroField
     , falsehood : NeutroField
@@ -102,7 +121,7 @@ main =
         }
 
 
-port setStorage : List Node -> Cmd msg
+port setStorage : List NeutroNode -> Cmd msg
 
 
 updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
@@ -116,10 +135,46 @@ updateWithStorage msg model =
     )
 
 
+
+-- DEFAULT STATE
+
+
+defaultNode : NeutroNode
+defaultNode =
+    { id = 0
+    , label = ""
+    , truth = 0.0
+    , indeterminacy = 0.0
+    , falsehood = 0.0
+    }
+
+
+defaultEdge : NeutroEdge
+defaultEdge =
+    { edgeId = 0
+    , from = 0
+    , to = 1
+    , truth = 0.3
+    , indeterminacy = 0.2
+    , falsehood = 0.3
+    }
+
+
 defaultForm : Form
 defaultForm =
     { id = 0
     , label = ""
+    , truth = NeutroField Nothing ""
+    , indeterminacy = NeutroField Nothing ""
+    , falsehood = NeutroField Nothing ""
+    }
+
+
+defaultEdgeForm : EdgeForm
+defaultEdgeForm =
+    { edgeId = 0
+    , from = From Nothing ""
+    , to = To Nothing ""
     , truth = NeutroField Nothing ""
     , indeterminacy = NeutroField Nothing ""
     , falsehood = NeutroField Nothing ""
@@ -173,56 +228,10 @@ initGraph model =
 
 initModel : Model
 initModel =
-    { nodes =
-        [ { id = 0
-          , label = "A"
-          , truth = 0.3
-          , indeterminacy = 0.2
-          , falsehood = 0.3
-          }
-        , { id = 0
-          , label = "B"
-          , truth = 0.3
-          , indeterminacy = 0.2
-          , falsehood = 0.3
-          }
-        , { id = 0
-          , label = "C"
-          , truth = 0.3
-          , indeterminacy = 0.2
-          , falsehood = 0.3
-          }
-        ]
-    , edges =
-        [ { id = 0
-          , from = 0
-          , to = 1
-          , truth = 0.3
-          , indeterminacy = 0.2
-          , falsehood = 0.3
-          }
-
-        -- A->B
-        , { id = 0
-          , from = 0
-          , to = 2
-          , truth = 0.3
-          , indeterminacy = 0.2
-          , falsehood = 0.3
-          }
-
-        -- A->C
-        , { id = 0
-          , from = 1
-          , to = 2
-          , truth = 0.3
-          , indeterminacy = 0.2
-          , falsehood = 0.3
-          }
-
-        -- B->C
-        ]
+    { nodes = []
+    , edges = []
     , form = defaultForm
+    , edgeForm = defaultEdgeForm
     }
 
 
@@ -326,12 +335,18 @@ nodeElement node =
 
 type Msg
     = NoOp
-    | Add
+    | AddNode
+    | AddEdge
     | Delete String
     | UpdateLabel String
     | UpdateTruth String
     | UpdateIndeterminacy String
     | UpdateFalsehood String
+    | UpdateEdgeFrom String
+    | UpdateEdgeTo String
+    | UpdateEdgeTruth String
+    | UpdateEdgeIndeterminacy String
+    | UpdateEdgeFalsehood String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -340,7 +355,7 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        Add ->
+        AddNode ->
             let
                 newNode =
                     { id = model.form.id
@@ -361,6 +376,28 @@ update msg model =
             , Cmd.none
             )
 
+        AddEdge ->
+            let
+                newEdge =
+                    { edgeId = model.edgeForm.edgeId
+                    , from = model.edgeForm.from |> originToString |> String.toInt |> Maybe.withDefault 0
+                    , to = model.edgeForm.to |> destinyToString |> String.toInt |> Maybe.withDefault 0
+                    , truth = model.edgeForm.truth |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    , indeterminacy = model.edgeForm.indeterminacy |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    , falsehood = model.edgeForm.falsehood |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    }
+
+                newEdgeForm =
+                    { defaultEdgeForm | edgeId = 0 }
+            in
+            ( { model
+                | edgeForm = newEdgeForm
+                , edges =
+                    model.edges ++ [ newEdge ]
+              }
+            , Cmd.none
+            )
+
         Delete label ->
             ( { model | nodes = List.filter (\n -> n.label /= label) model.nodes }
             , Cmd.none
@@ -375,6 +412,52 @@ update msg model =
                     { oldForm | label = newLabel }
             in
             ( { model | form = newForm }, Cmd.none )
+
+        UpdateEdgeFrom newFrom ->
+            let
+                oldEdgeForm =
+                    model.edgeForm
+
+                newEdgeForm =
+                    if String.all Char.isDigit newFrom == True then
+                        { oldEdgeForm | from = From Nothing newFrom }
+
+                    else
+                        let
+                            maybeFrom =
+                                newFrom |> String.toInt
+                        in
+                        case maybeFrom of
+                            Nothing ->
+                                { oldEdgeForm | from = From Nothing newFrom }
+
+                            Just t ->
+                                { oldEdgeForm | from = From (Just t) newFrom }
+            in
+            ( { model | edgeForm = newEdgeForm }, Cmd.none )
+
+        UpdateEdgeTo newTo ->
+            let
+                oldEdgeForm =
+                    model.edgeForm
+
+                newEdgeForm =
+                    if String.all Char.isDigit newTo == True then
+                        { oldEdgeForm | to = To Nothing newTo }
+
+                    else
+                        let
+                            maybeTo =
+                                newTo |> String.toInt
+                        in
+                        case maybeTo of
+                            Nothing ->
+                                { oldEdgeForm | to = To Nothing newTo }
+
+                            Just t ->
+                                { oldEdgeForm | to = To (Just t) newTo }
+            in
+            ( { model | edgeForm = newEdgeForm }, Cmd.none )
 
         UpdateTruth newTruth ->
             let
@@ -399,6 +482,29 @@ update msg model =
             in
             ( { model | form = newForm }, Cmd.none )
 
+        UpdateEdgeTruth newTruth ->
+            let
+                oldEdgeForm =
+                    model.edgeForm
+
+                newEdgeForm =
+                    if String.right 1 newTruth == "." then
+                        { oldEdgeForm | truth = NeutroField Nothing newTruth }
+
+                    else
+                        let
+                            maybeTruth =
+                                newTruth |> String.toFloat
+                        in
+                        case maybeTruth of
+                            Nothing ->
+                                { oldEdgeForm | truth = NeutroField Nothing newTruth }
+
+                            Just t ->
+                                { oldEdgeForm | truth = NeutroField (Just t) newTruth }
+            in
+            ( { model | edgeForm = newEdgeForm }, Cmd.none )
+
         UpdateIndeterminacy newIndeterminacy ->
             let
                 oldForm =
@@ -421,6 +527,29 @@ update msg model =
                                 { oldForm | indeterminacy = NeutroField (Just p) newIndeterminacy }
             in
             ( { model | form = newForm }, Cmd.none )
+
+        UpdateEdgeIndeterminacy newIndeterminacy ->
+            let
+                oldEdgeForm =
+                    model.edgeForm
+
+                newEdgeForm =
+                    if String.right 1 newIndeterminacy == "." then
+                        { oldEdgeForm | indeterminacy = NeutroField Nothing newIndeterminacy }
+
+                    else
+                        let
+                            maybeIndeterminacy =
+                                newIndeterminacy |> String.toFloat
+                        in
+                        case maybeIndeterminacy of
+                            Nothing ->
+                                { oldEdgeForm | indeterminacy = NeutroField Nothing newIndeterminacy }
+
+                            Just p ->
+                                { oldEdgeForm | indeterminacy = NeutroField (Just p) newIndeterminacy }
+            in
+            ( { model | edgeForm = newEdgeForm }, Cmd.none )
 
         UpdateFalsehood newFalsehood ->
             let
@@ -445,6 +574,29 @@ update msg model =
             in
             ( { model | form = newForm }, Cmd.none )
 
+        UpdateEdgeFalsehood newFalsehood ->
+            let
+                oldEdgeForm =
+                    model.edgeForm
+
+                newEdgeForm =
+                    if String.right 1 newFalsehood == "." then
+                        { oldEdgeForm | falsehood = NeutroField Nothing newFalsehood }
+
+                    else
+                        let
+                            maybeFalsehood =
+                                newFalsehood |> String.toFloat
+                        in
+                        case maybeFalsehood of
+                            Nothing ->
+                                { oldEdgeForm | falsehood = NeutroField Nothing newFalsehood }
+
+                            Just p ->
+                                { oldEdgeForm | falsehood = NeutroField (Just p) newFalsehood }
+            in
+            ( { model | edgeForm = newEdgeForm }, Cmd.none )
+
 
 
 -- VIEW
@@ -454,11 +606,11 @@ view : Model -> Html Msg
 view model =
     div
         [ class "app" ]
-        [ viewNavBar
-        , div
+        [ div
             [ class "bar-scroll col-3 border-right border-info" ]
             [ viewNodeForm model.form
-            , viewEdgeForm
+            , viewEdgeForm model.edgeForm
+            , viewSimulationForm
             ]
         , div [ class "col-6 bg-dark text-white" ]
             [ text "Canvas"
@@ -478,35 +630,6 @@ view model =
                 [ h3 [ class "title m-3" ] [ text "Edges:" ]
                 , viewEdges model.edges
                 ]
-            ]
-        ]
-
-
-viewNavBar : Html Msg
-viewNavBar =
-    nav [ class "navbar navbar-expand-lg navbar-dark bg-dark w-100" ]
-        [ a [ class "navbar-brand ml-3", href "#" ]
-            [ img
-                [ src "https://uploads-ssl.webflow.com/5e4e898f09bfea6abb6f44be/5e4ede46179566acc07948ca_complete.svg"
-                , alt "Logo"
-                ]
-                []
-            ]
-        , button [ class "navbar-toggler", type_ "button" ]
-            [ span [ class "navbar-toggler-icon" ]
-                []
-            ]
-        , div [ class "collapse navbar-collapse", id "navbarNavAltMarkup" ]
-            [ div [ class "float-right navbar-nav" ]
-                [ a [ class "nav-item nav-link active", href "#" ]
-                    [ text "Home" ]
-                ]
-            , a [ class "nav-item nav-link", href "#" ]
-                [ text "Features" ]
-            , a [ class "nav-item nav-link", href "#" ]
-                [ text "Pricing" ]
-            , a [ class "nav-item nav-link disabled", href "#" ]
-                [ text "Disabled" ]
             ]
         ]
 
@@ -576,7 +699,7 @@ viewNodeForm node =
                         [ class "btn btn-outline-primary w-100 my-2 my-3"
                         , type_ "submit"
                         , style "border-radius" "2rem"
-                        , onClick Add
+                        , onClick AddNode
                         , disabled (checkFormIsEmpty node)
                         ]
                         [ text "Add Node" ]
@@ -586,7 +709,7 @@ viewNodeForm node =
         ]
 
 
-viewNodes : List Node -> Html Msg
+viewNodes : List NeutroNode -> Html Msg
 viewNodes nodes =
     table
         [ class "table m-3" ]
@@ -608,7 +731,7 @@ viewNodes nodes =
 --    ( String.fromInt node.id, viewNode node )
 
 
-viewNode : Node -> Html Msg
+viewNode : NeutroNode -> Html Msg
 viewNode node =
     tr []
         [ td [ class "text-left" ] [ text node.label ]
@@ -626,67 +749,92 @@ viewNode node =
         ]
 
 
-viewEdgeForm : Html Msg
-viewEdgeForm =
-    div [ class "col border-top" ]
-        [ h3 [ class "title mt-3" ] [ text "Edge Input:" ]
-        , div [ class "row" ]
+viewEdgeForm : EdgeForm -> Html Msg
+viewEdgeForm edge =
+    div
+        [ class "accordion my-3"
+        , id "accordionExample"
+        ]
+        [ div
+            [ class "shadow card m-2 w-100 border-0"
+            , style "border-radius" "2rem"
+            , style "max-width" "260px"
+            ]
             [ div
-                [ class "dropdown m-3" ]
-                [ h5 [ class "title" ] [ text "Origin" ]
+                [ class "card-header bg-primary"
+                , id "headingTwo"
+                , style "display" "flex"
+                ]
+                [ h4
+                    [ class "ml-4 pt-2 text-white" ]
+                    [ text "Edge" ]
                 , button
-                    [ type_ "button"
-                    , class "btn btn-secondary dropdown-toggle"
-                    , id "dropdownMenuOffset"
+                    [ class "btn ml-5 p-0"
+                    , type_ "button"
                     ]
-                    [ span [ class "sr-only" ] [ text "Destiny" ] ]
+                    [ h1
+                        [ class "m-0 ml-1 text-white" ]
+                        [ text "+" ]
+                    ]
                 ]
             , div
-                [ class "dropdown m-3" ]
-                [ h5 [ class "title" ] [ text "Destiny" ]
-                , button
-                    [ type_ "button"
-                    , class "btn btn-secondary dropdown-toggle"
-                    , id "dropdownMenuOffset"
+                []
+                [ input
+                    [ type_ "text"
+                    , class "w-25 mr-2"
+                    , placeholder "From"
+                    , autofocus True
+                    , value (originToString edge.from)
+                    , onInput UpdateEdgeFrom
                     ]
-                    [ span [ class "sr-only" ] [ text "Destiny" ] ]
+                    []
+                , input
+                    [ type_ "text"
+                    , class "w-25 mr-2"
+                    , placeholder "To"
+                    , autofocus True
+                    , value (destinyToString edge.to)
+                    , onInput UpdateEdgeTo
+                    ]
+                    []
+                , input
+                    [ type_ "text"
+                    , class "w-25 mr-2"
+                    , placeholder "Tru"
+                    , autofocus True
+                    , value (neutroFieldToString edge.truth)
+                    , onInput UpdateEdgeTruth
+                    ]
+                    []
+                , input
+                    [ type_ "text"
+                    , class "w-25 mx-3"
+                    , placeholder "Ind"
+                    , autofocus True
+                    , value (neutroFieldToString edge.indeterminacy)
+                    , onInput UpdateEdgeIndeterminacy
+                    ]
+                    []
+                , input
+                    [ type_ "text"
+                    , class "w-25 ml-2"
+                    , placeholder "Fal"
+                    , autofocus True
+                    , value (neutroFieldToString edge.falsehood)
+                    , onInput UpdateEdgeFalsehood
+                    ]
+                    []
+                , button
+                    [ class "btn btn-outline-primary w-100 my-2 my-3"
+                    , type_ "submit"
+                    , style "border-radius" "2rem"
+
+                    --, disabled True
+                    , onClick AddEdge
+                    ]
+                    [ text "Add Edge" ]
                 ]
             ]
-        , input
-            [ class "form-control mb-3"
-            , placeholder "Truth"
-            , autofocus True
-
-            -- , value (neutroFieldToString node.truth)
-            -- , onInput UpdateTruth
-            ]
-            []
-        , input
-            [ class "form-control mb-3"
-            , placeholder "Indeterminacy"
-            , autofocus True
-
-            -- , value (neutroFieldToString node.indeterminacy)
-            -- , onInput UpdateIndeterminacy
-            ]
-            []
-        , input
-            [ class "form-control mb-3"
-            , placeholder "Falsehood"
-            , autofocus True
-
-            -- , value (neutroFieldToString node.falsehood)
-            -- , onInput UpdateFalsehood
-            ]
-            []
-        , button
-            [ type_ "button"
-            , class "btn btn-primary"
-
-            -- , onClick Add
-            , disabled True
-            ]
-            [ text "Add Edge" ]
         ]
 
 
@@ -707,9 +855,10 @@ viewEdges edges =
         )
 
 
-viewKeyedEdge : NeutroEdge -> ( String, Html Msg )
-viewKeyedEdge edge =
-    ( String.fromInt edge.id, viewEdge edge )
+
+--viewKeyedEdge : NeutroEdge -> ( String, Html Msg )
+--viewKeyedEdge edge =
+--    ( String.fromInt edge.edgeId, viewEdge edge )
 
 
 viewEdge : NeutroEdge -> Html Msg
@@ -728,6 +877,97 @@ viewEdge edge =
                 -- , onClick (Delete (String.FromInt edge.id))
                 ]
                 [ text "X" ]
+            ]
+        ]
+
+
+viewSimulationForm : Html Msg
+viewSimulationForm =
+    div
+        [ class "accordion my-3"
+        , id "accordionExample"
+        ]
+        [ div
+            [ class "shadow card m-2 border-0"
+            , style "border-radius" "2rem"
+            , style "max-width" "260px"
+            ]
+            [ div
+                [ class "card-header bg-primary"
+                , id "headingThree"
+                , style "display" "flex"
+                ]
+                [ h4
+                    [ class "ml-4 pt-2 text-white" ]
+                    [ text "Simulate" ]
+                , button
+                    [ class "btn ml-3 p-0"
+                    , type_ "button"
+                    ]
+                    [ h1
+                        [ class "m-0 text-white" ]
+                        [ text "+" ]
+                    ]
+                ]
+            , div
+                [ id "collapseThree"
+                , class "collapse show"
+                ]
+                [ div
+                    [ class "card-body p-3" ]
+                    [ div
+                        [ class "dropdown mb-3" ]
+                        [ button
+                            [ class "btn btn-secondary dropdown-toggle"
+                            , type_ "button"
+                            , id "dropdownMenuButton"
+                            , style "border-radius" "2rem"
+                            ]
+                            [ text "Node" ]
+                        , div [ class "dropdown-menu", style "border-radius" "1rem" ]
+                            [ a
+                                [ class "dropdown-item"
+                                , href "#"
+                                ]
+                                [ text "N0" ]
+                            , a
+                                [ class "dropdown-item"
+                                , href "#"
+                                ]
+                                [ text "N1" ]
+                            , a
+                                [ class "dropdown-item"
+                                , href "#"
+                                ]
+                                [ text "N3" ]
+                            ]
+                        ]
+                    , input
+                        [ type_ "text"
+                        , class "w-25 mr-2"
+                        , placeholder "Tru"
+                        ]
+                        []
+                    , input
+                        [ type_ "text"
+                        , class "w-25 mx-3"
+                        , placeholder "Ind"
+                        ]
+                        []
+                    , input
+                        [ type_ "text"
+                        , class "w-25 ml-2"
+                        , placeholder "Fal"
+                        ]
+                        []
+                    , button
+                        [ class "btn btn-outline-primary w-100 my-2 my-3"
+                        , type_ "submit"
+                        , style "border-radius" "2rem"
+                        ]
+                        [ text "Add Simulation" ]
+                    ]
+                ]
             ]
         ]
 
@@ -758,6 +998,26 @@ neutroFieldToString neutroField =
 
         NeutroField (Just _) neutro ->
             neutro
+
+
+destinyToString : To -> String
+destinyToString to =
+    case to of
+        To Nothing destiny ->
+            destiny
+
+        To (Just _) destiny ->
+            destiny
+
+
+originToString : From -> String
+originToString from =
+    case from of
+        From Nothing origin ->
+            origin
+
+        From (Just _) origin ->
+            origin
 
 
 checkFormIsEmpty : Form -> Bool

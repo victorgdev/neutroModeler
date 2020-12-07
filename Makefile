@@ -1,5 +1,5 @@
 run:
-	elm make src/Main.elm --output elm.js
+	elm make src/Main.elm --debug --output elm.js
 
 live:
-	elm-live src/Main.elm --open -- --output elm.js
+	elm-live src/Main.elm --open -- --debug --output elm.js
