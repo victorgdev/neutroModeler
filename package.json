@@ -4,6 +4,7 @@
   "description": "",
   "main": "elm.js",
   "scripts": {
+    "dev": "elm-live src/Main.elm --open -- --debug --output elm.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -18,6 +19,7 @@
   },
   "homepage": "https://github.com/victorgdev/neutroModeler#readme",
   "devDependencies": {
-    "elm-format": "^0.8.4"
+    "elm-format": "^0.8.4",
+    "elm-live": "^4.0.2"
   }
 }
