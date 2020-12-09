@@ -1,57 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>NeutroModeler</title>
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
-   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
+  <title>CSS Template</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styletest.css">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+    integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+    integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous">
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+    integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous">
+  </script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+    integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous">
+  </script>
 </head>
+
 <body>
-   <div class="container-fluid">
-      <div class="row">
-         <div class="col-4">
-            <ul class="nav nav-tabs">
-               <li class="nav-item" ><a class="nav-link">Node</a></li>
-               <li class="nav-item" ><a class="nav-link">Edge</a></li>
-               <li class="nav-item" ><a class="nav-link">Simulation</a></li>
-            </ul>
-            <div class="form">
-               <h3 class="form-title">Input Nodes:</h3>
-               <form class="form">
-                  <input class="d-block p-2 mb-3" type="text" id="label-input" placeholder="Label">
-                  <input type="text" id="tru-input" placeholder="Truth">
-                  <input type="text" id="ind-input" placeholder="Inderteminacy">
-                  <input type="text" id="fal-input" placeholder="Falsehood">
-               </form>
-               <button class="primary-button">Add Node</button>
+  <div class="container-fluid" style="min-height: 100vh;">
+
+    <!-- NAVBAR -->
+    <div class="row">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark w-100">
+        <a class="navbar-brand ml-3" href="#">
+          <img src="
+            https://uploads-ssl.webflow.com/5e4e898f09bfea6abb6f44be/5e4ede46179566acc07948ca_complete.svg" alt="Logo">
+        </a>
+        <!-- <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup"
+          aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+          <div class="float-right navbar-nav">
+            <a class="nav-item nav-link active" href="#">Home <span class="sr-only">(current)</span></a>
+            <a class="nav-item nav-link" href="#">Features</a>
+            <a class="nav-item nav-link" href="#">Pricing</a>
+            <a class="nav-item nav-link disabled" href="#" tabindex="-1" aria-disabled="true">Disabled</a>
+          </div>
+        </div> -->
+      </nav>
+    </div>
+    <!-- END OF NAVBAR -->
+
+    <div class="row pt-3">
+
+      <!-- MODEL INPUT -->
+      <div class="col-3">
+
+        <!-- NODES -->
+        <div class="accordion" id="accordionExample">
+          <div class="shadow card m-2 w-100 border-0" style="border-radius: 2rem; max-width: 260px;">
+            <div class="card-header bg-primary" id="headingOne" style="display: flex;">
+              <h4 class="ml-4 pt-2 text-white">Node</h4>
+              <button class="btn ml-5 p-0" type="button" data-toggle="collapse" data-target="#collapseOne"
+                aria-expanded="true" aria-controls="collapseOne">
+                <h1 class="m-0 ml-1 text-white">+</h1>
+              </button>
             </div>
-          
-            <div id="Edge">
-               <table class="table">
-                  <tr>
-                     <th scope="col">Id</th>
-                     <th scope="col">Label</th>
-                     <th scope="col">Tru</th>
-                     <th scope="col">Ind</th>
-                     <th scope="col">Fal</th>
-                     <th scope="col">Remove</th>
-                  </tr>
-                  <tr>
-                     <th scope="col">1</th>
-                     <td>Node 0</td>
-                     <td>2</td>
-                     <td>2</td>
-                     <td>2</td>
-                     <td><button type="button" class="close"><span>&times;</span></button></td>
-                  </tr>
-               </table>
+            <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordionExample">
+              <div class="card-body p-3">
+                <input type="text" class="my-3 w-100" placeholder="Label">
+                <input type="text" class="w-25 mr-2" placeholder="Tru">
+                <input type="text" class="w-25 mx-3" placeholder="Ind">
+                <input type="text" class="w-25 ml-2" placeholder="Fal">
+                <button class="btn btn-outline-primary w-100 my-2 my-3" type="submit" style="border-radius: 2rem;">Add
+                  Node</button>
+              </div>
             </div>
-         </div>
-         <div class="col-8">
-            Graph
-         </div>
+          </div>
+        </div>
+        <!-- END OF NODES -->
+
+        <!-- EDGES -->
+        <div class="accordion my-3" id="accordionExample">
+          <div class="shadow card m-2 w-100 border-0" style="border-radius: 2rem; max-width: 260px;">
+            <div class="card-header bg-primary" id="headingTwo" style="display: flex;">
+              <h4 class="ml-4 pt-2 text-white">Edge</h4>
+              <button class="btn ml-5 p-0" type="button" data-toggle="collapse" data-target="#collapseTwo"
+                aria-expanded="true" aria-controls="collapseTwo">
+                <h1 class="m-0 ml-1 text-white">+</h1>
+              </button>
+            </div>
+            <div id="collapseTwo" class="collapse show" aria-labelledby="headingTwo" data-parent="#accordionExample">
+              <div class="card-body p-3">
+                <div class="row px-3">
+                  <div class="dropdown mx-3 mb-3">
+                    <button class="btn btn-secondary dropdown-toggle" style="border-radius: 2rem; min-width: 5rem;"
+                      type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                      aria-expanded="false" style="border-radius: 2rem;">
+                      From
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton" style="border-radius: 1rem;">
+                      <a class="dropdown-item" href="#">N0</a>
+                      <a class="dropdown-item" href="#">N1</a>
+                      <a class="dropdown-item" href="#">N3</a>
+                    </div>
+                  </div>
+                  <div class="dropdown mx-3 mb-3">
+                    <button class="btn btn-secondary dropdown-toggle" style="border-radius: 2rem; min-width: 5rem;"
+                      type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                      aria-expanded="false" style="border-radius: 2rem;">
+                      To
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton" style="border-radius: 1rem;">
+                      <a class="dropdown-item" href="#">N0</a>
+                      <a class="dropdown-item" href="#">N1</a>
+                      <a class="dropdown-item" href="#">N3</a>
+                    </div>
+                  </div>
+                </div>
+                <input type="text" class="w-25 mr-2" placeholder="Tru">
+                <input type="text" class="w-25 mx-3" placeholder="Ind">
+                <input type="text" class="w-25 ml-2" placeholder="Fal">
+                <button class="btn btn-outline-primary w-100 my-2 my-3" type="submit" style="border-radius: 2rem;">Add
+                  Edge</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- END OF EDGES -->
+
+        <!-- SIMULATION -->
+        <div class="accordion my-3" id="accordionExample">
+          <div class="shadow card m-2 border-0" style="border-radius: 2rem; max-width: 260px;">
+            <div class="card-header bg-primary" id="headingThree" style="display: flex;">
+              <h4 class="ml-4 pt-2 text-white">Simulate</h4>
+              <button class="btn ml-3 p-0" type="button" data-toggle="collapse" data-target="#collapseThree"
+                aria-expanded="true" aria-controls="collapseThree">
+                <h1 class="m-0 text-white">+</h1>
+              </button>
+            </div>
+            <div id="collapseThree" class="collapse show" aria-labelledby="headingThree"
+              data-parent="#accordionExample">
+              <div class="card-body p-3">
+                <div class="dropdown mb-3">
+                  <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton"
+                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border-radius: 2rem;">
+                    Node
+                  </button>
+                  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton" style="border-radius: 1rem;">
+                    <a class="dropdown-item" href="#">N0</a>
+                    <a class="dropdown-item" href="#">N1</a>
+                    <a class="dropdown-item" href="#">N3</a>
+                  </div>
+                </div>
+                <input type="text" class="w-25 mr-2" placeholder="Tru">
+                <input type="text" class="w-25 mx-3" placeholder="Ind">
+                <input type="text" class="w-25 ml-2" placeholder="Fal">
+                <button class="btn btn-outline-primary w-100 my-2 my-3" type="submit" style="border-radius: 2rem;">Add
+                  Simulation</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- END OF SIMULATION -->
+
+        <!-- TARGET -->
+        <div class="accordion my-3" id="accordionExample">
+          <div class="shadow card m-2 border-0" style="border-radius: 2rem; max-width: 260px;">
+            <div class="card-header bg-primary" id="headingFour" style="display: flex;">
+              <h4 class="ml-3 pt-2 text-white">Target</h4>
+              <button class="btn ml-5 p-0" type="button" data-toggle="collapse" data-target="#collapseFour"
+                aria-expanded="true" aria-controls="collapseFour">
+                <h1 class="m-0 ml-1 text-white">+</h1>
+              </button>
+            </div>
+            <div id="collapseFour" class="collapse show" aria-labelledby="headingFour" data-parent="#accordionExample">
+              <div class="card-body p-3">
+                <div class="dropdown mb-3">
+                  <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton"
+                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border-radius: 2rem;">
+                    Node
+                  </button>
+                  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton" style="border-radius: 1rem;">
+                    <a class="dropdown-item" href="#">N0</a>
+                    <a class="dropdown-item" href="#">N1</a>
+                    <a class="dropdown-item" href="#">N3</a>
+                  </div>
+                </div>
+                <button class="btn btn-outline-primary w-100 my-2 my-3" type="submit" style="border-radius: 2rem;">Add
+                  Target</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- END OF TARGET -->
+
+        <div class="row m-3" style="width: 100%;">
+          <button class="shadow btn btn-outline-success m-3" style="min-width: 6rem;">Run</button>
+          <button class="shadow btn btn-outline-danger m-3" style="min-width: 6rem;">Delete</button>
+        </div>
       </div>
-   </div>
+      <div class="col w-75 shadow" style="max-height: 100vh;">Canvas</div>
+    </div>
+  </div>
+  <script src="test.js">
+  </script>
 </body>
+
 </html>
