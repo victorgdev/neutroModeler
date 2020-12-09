@@ -6,7 +6,7 @@ import Color exposing (Color)
 import Force exposing (State)
 import Graph exposing (Edge, Graph, Node, NodeId)
 import Html exposing (..)
-import Html.Attributes exposing (autofocus, class, id, placeholder, required, scope, step, style, type_, value)
+import Html.Attributes exposing (autofocus, class, hidden, id, placeholder, required, scope, step, style, type_, value)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
 import IntDict
@@ -35,15 +35,15 @@ type alias Model =
     , edgeForm : EdgeForm
     , simulationForm : SimulationForm
     , targetNodeForm : TargetNodeForm
+    , nodeFormDisplay : Bool
+    , edgeFormDisplay : Bool
+    , simFormDisplay : Bool
+    , targetFormDisplay : Bool
     }
 
 
 
---type FormType
---    = NodeForm
---    | EdgeForm
---    | SimulationNodeForm
---    | TargetNodeForm
+-- MODEL ELEMENTS
 
 
 type alias Entity =
@@ -95,6 +95,51 @@ type alias TargetNode =
     }
 
 
+
+-- FORMS
+
+
+type alias NodeForm =
+    { nodeId : Int
+    , label : String
+    , truth : NeutroField
+    , indeterminacy : NeutroField
+    , falsehood : NeutroField
+    , hideForm : Bool
+    }
+
+
+type alias EdgeForm =
+    { edgeId : Int
+    , from : From
+    , to : To
+    , truth : NeutroField
+    , indeterminacy : NeutroField
+    , falsehood : NeutroField
+    , hideForm : Bool
+    }
+
+
+type alias SimulationForm =
+    { simNodeId : Int
+    , simNodeLabel : String
+    , simNodeTruth : NeutroField
+    , simNodeIndeterminacy : NeutroField
+    , simNodeFalsehood : NeutroField
+    , hideForm : Bool
+    }
+
+
+type alias TargetNodeForm =
+    { targetNodeId : Int
+    , targetNodeLabel : String
+    , targetNodeTruth : NeutroField
+    , targetNodeIndeterminacy : NeutroField
+    , targetNodeFalsehood : NeutroField
+    , hideForm : Bool
+    }
+
+
 type From
     = From (Maybe Int) String
 
@@ -107,41 +152,8 @@ type NeutroField
     = NeutroField (Maybe Float) String
 
 
-type alias NodeForm =
-    { nodeId : Int
-    , label : String
-    , truth : NeutroField
-    , indeterminacy : NeutroField
-    , falsehood : NeutroField
-    }
 
-
-type alias EdgeForm =
-    { edgeId : Int
-    , from : From
-    , to : To
-    , truth : NeutroField
-    , indeterminacy : NeutroField
-    , falsehood : NeutroField
-    }
-
-
-type alias SimulationForm =
-    { simNodeId : Int
-    , simNodeLabel : String
-    , simNodeTruth : NeutroField
-    , simNodeIndeterminacy : NeutroField
-    , simNodeFalsehood : NeutroField
-    }
-
-
-type alias TargetNodeForm =
-    { targetNodeId : Int
-    , targetNodeLabel : String
-    , targetNodeTruth : NeutroField
-    , targetNodeIndeterminacy : NeutroField
-    , targetNodeFalsehood : NeutroField
-    }
+-- DEFAULTS
 
 
 w : Float
@@ -183,44 +195,93 @@ updateWithStorage msg model =
     )
 
 
-defaultNodeForm : NodeForm
-defaultNodeForm =
+hideNodeForm : NodeForm
+hideNodeForm =
     { nodeId = 0
     , label = ""
     , truth = NeutroField Nothing ""
     , indeterminacy = NeutroField Nothing ""
     , falsehood = NeutroField Nothing ""
+    , hideForm = True
     }
 
 
-defaultEdgeForm : EdgeForm
-defaultEdgeForm =
+displayNodeForm : NodeForm
+displayNodeForm =
+    { nodeId = 0
+    , label = ""
+    , truth = NeutroField Nothing ""
+    , indeterminacy = NeutroField Nothing ""
+    , falsehood = NeutroField Nothing ""
+    , hideForm = False
+    }
+
+
+hideEdgeForm : EdgeForm
+hideEdgeForm =
     { edgeId = 0
     , from = From Nothing ""
     , to = To Nothing ""
     , truth = NeutroField Nothing ""
     , indeterminacy = NeutroField Nothing ""
     , falsehood = NeutroField Nothing ""
+    , hideForm = True
     }
 
 
-defaultSimulationForm : SimulationForm
-defaultSimulationForm =
+displayEdgeForm : EdgeForm
+displayEdgeForm =
+    { edgeId = 0
+    , from = From Nothing ""
+    , to = To Nothing ""
+    , truth = NeutroField Nothing ""
+    , indeterminacy = NeutroField Nothing ""
+    , falsehood = NeutroField Nothing ""
+    , hideForm = False
+    }
+
+
+hideSimulationForm : SimulationForm
+hideSimulationForm =
     { simNodeId = 0
     , simNodeLabel = ""
     , simNodeTruth = NeutroField Nothing ""
     , simNodeIndeterminacy = NeutroField Nothing ""
     , simNodeFalsehood = NeutroField Nothing ""
+    , hideForm = True
     }
 
 
-defaultTargetNodeForm : TargetNodeForm
-defaultTargetNodeForm =
+displaySimulationForm : SimulationForm
+displaySimulationForm =
+    { simNodeId = 0
+    , simNodeLabel = ""
+    , simNodeTruth = NeutroField Nothing ""
+    , simNodeIndeterminacy = NeutroField Nothing ""
+    , simNodeFalsehood = NeutroField Nothing ""
+    , hideForm = False
+    }
+
+
+hideTargetNodeForm : TargetNodeForm
+hideTargetNodeForm =
     { targetNodeId = 0
     , targetNodeLabel = ""
     , targetNodeTruth = NeutroField Nothing ""
     , targetNodeIndeterminacy = NeutroField Nothing ""
     , targetNodeFalsehood = NeutroField Nothing ""
+    , hideForm = True
+    }
+
+
+displayTargetNodeForm : TargetNodeForm
+displayTargetNodeForm =
+    { targetNodeId = 0
+    , targetNodeLabel = ""
+    , targetNodeTruth = NeutroField Nothing ""
+    , targetNodeIndeterminacy = NeutroField Nothing ""
+    , targetNodeFalsehood = NeutroField Nothing ""
+    , hideForm = False
     }
 
 
@@ -275,10 +336,14 @@ initModel =
     , edges = []
     , simulatedNodes = []
     , targetNodes = []
-    , nodeForm = defaultNodeForm
-    , edgeForm = defaultEdgeForm
-    , simulationForm = defaultSimulationForm
-    , targetNodeForm = defaultTargetNodeForm
+    , nodeForm = hideNodeForm
+    , edgeForm = hideEdgeForm
+    , simulationForm = hideSimulationForm
+    , targetNodeForm = hideTargetNodeForm
+    , nodeFormDisplay = True
+    , edgeFormDisplay = True
+    , simFormDisplay = True
+    , targetFormDisplay = True
     }
 
 
@@ -410,6 +475,11 @@ type Msg
     | UpdateSimNodeFalsehood String
       -- Target Node
     | UpdateTargetNodeLabel String
+      -- Forms
+    | DisplayNodeForm
+    | DisplayEdgeForm
+    | DisplaySimForm
+    | DisplayTargetForm
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -429,7 +499,7 @@ update msg model =
                     }
 
                 newForm =
-                    { defaultNodeForm | nodeId = 0 }
+                    { hideNodeForm | nodeId = 0 }
             in
             ( { model
                 | nodeForm = newForm
@@ -451,7 +521,7 @@ update msg model =
                     }
 
                 newEdgeForm =
-                    { defaultEdgeForm | edgeId = 0 }
+                    { hideEdgeForm | edgeId = 0 }
             in
             ( { model
                 | edgeForm = newEdgeForm
@@ -472,7 +542,7 @@ update msg model =
                     }
 
                 newSimulationForm =
-                    { defaultSimulationForm | simNodeId = 0 }
+                    { hideSimulationForm | simNodeId = 0 }
             in
             ( { model
                 | simulationForm = newSimulationForm
@@ -493,7 +563,7 @@ update msg model =
                     }
 
                 newTargetNodeForm =
-                    { defaultTargetNodeForm | targetNodeId = 0 }
+                    { hideTargetNodeForm | targetNodeId = 0 }
             in
             ( { model
                 | targetNodeForm = newTargetNodeForm
@@ -806,6 +876,78 @@ update msg model =
             in
             ( { model | targetNodeForm = newTargetNodeForm }, Cmd.none )
 
+        DisplayNodeForm ->
+            ( { model
+                | nodeFormDisplay =
+                    if model.nodeFormDisplay == True then
+                        False
+
+                    else
+                        True
+                , nodeForm =
+                    if model.nodeFormDisplay == True then
+                        hideNodeForm
+
+                    else
+                        displayNodeForm
+              }
+            , Cmd.none
+            )
+
+        DisplayEdgeForm ->
+            ( { model
+                | edgeFormDisplay =
+                    if model.edgeFormDisplay == True then
+                        False
+
+                    else
+                        True
+                , edgeForm =
+                    if model.edgeFormDisplay == True then
+                        hideEdgeForm
+
+                    else
+                        displayEdgeForm
+              }
+            , Cmd.none
+            )
+
+        DisplaySimForm ->
+            ( { model
+                | simFormDisplay =
+                    if model.simFormDisplay == True then
+                        False
+
+                    else
+                        True
+                , simulationForm =
+                    if model.simFormDisplay == True then
+                        hideSimulationForm
+
+                    else
+                        displaySimulationForm
+              }
+            , Cmd.none
+            )
+
+        DisplayTargetForm ->
+            ( { model
+                | targetFormDisplay =
+                    if model.targetFormDisplay == True then
+                        False
+
+                    else
+                        True
+                , targetNodeForm =
+                    if model.targetFormDisplay == True then
+                        hideTargetNodeForm
+
+                    else
+                        displayTargetNodeForm
+              }
+            , Cmd.none
+            )
+
 
 
 -- VIEW
@@ -814,17 +956,16 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div
-        [ class "app" ]
+        [ class "app bg-dark" ]
         [ div
             [ class "bar-scroll col-3 border-right border-info" ]
-            [ viewNodeForm model.nodeForm
-            , viewEdgeForm model.edgeForm
-            , viewSimulationForm model.simulationForm
-            , viewTargetNodeForm model.targetNodeForm
+            [ viewNodeForm model model.nodeForm
+            , viewEdgeForm model model.edgeForm
+            , viewSimulationForm model model.simulationForm
+            , viewTargetNodeForm model model.targetNodeForm
             ]
         , div [ class "col-6 bg-dark text-white" ]
-            [ text "Canvas"
-            , svg [ viewBox 0 0 w h ]
+            [ svg [ viewBox 0 0 w h ]
                 [ g [ TypedSvg.Attributes.class [ "links" ] ] <|
                     List.map (linkElement (initGraph model)) <|
                         Graph.edges (initGraph model)
@@ -834,22 +975,282 @@ view model =
                 ]
             ]
         , div [ class "bar-scroll col-3 border-right border-info" ]
-            [ h3 [ class "title m-3" ] [ text "Nodes:" ]
-            , viewNodes model.nodes
-            , div [ class "border-top" ]
-                [ h3 [ class "title m-3" ] [ text "Edges:" ]
-                , viewEdges model.edges
+            [ viewTable "Nodes" viewNodes model.nodes
+            , viewTable "Edges" viewEdges model.edges
+            , viewTable "Simulation" viewSimulatedNodes model.simulatedNodes
+            , viewTable "Target" viewTargetNodes model.targetNodes
+            ]
+        ]
+
+
+
+-- FORMS
+
+
+viewNodeForm : Model -> NodeForm -> Html Msg
+viewNodeForm model node =
+    div
+        [ class "accordion" ]
+        [ div
+            [ class "shadow card m-2 w-100 border-0"
+            , style "border-radius" "2rem"
+            , style "max-width" "260px"
+            ]
+            [ viewFormHeader "Node" DisplayNodeForm
+            , form
+                [ class "collapse show"
+                , hidden model.nodeFormDisplay
+                , onSubmit AddNode
                 ]
-            , div [ class "border-top" ]
-                [ h3 [ class "title m-3" ] [ text "Simulated Nodes:" ]
-                , viewSimulatedNodes model.simulatedNodes
-                ]
-            , div [ class "border-top" ]
-                [ h3 [ class "title m-3" ] [ text "Target Nodes:" ]
-                , viewTargetNodes model.targetNodes
+                [ div [ class "card-body p-3" ]
+                    [ viewInputNodeLabel "Label" node.label UpdateNodeLabel
+                    , viewInputNumber "Tru" node.truth UpdateNodeTruth
+                    , viewInputNumber "Ind" node.indeterminacy UpdateNodeIndeterminacy
+                    , viewInputNumber "Fal" node.falsehood UpdateNodeFalsehood
+                    , viewFormButton "Add Node"
+                    ]
                 ]
             ]
         ]
+
+
+viewEdgeForm : Model -> EdgeForm -> Html Msg
+viewEdgeForm model edge =
+    div
+        [ class "accordion" ]
+        [ div
+            [ class "shadow card m-2 w-100 border-0"
+            , style "border-radius" "2rem"
+            , style "max-width" "260px"
+            ]
+            [ viewFormHeader "Edge" DisplayEdgeForm
+            , form
+                [ class "collapse show"
+                , hidden model.edgeFormDisplay
+                , onSubmit AddEdge
+                ]
+                [ viewInputEdgeLabel "From" (edgeOriginToString edge.from) UpdateEdgeFrom
+                , viewInputEdgeLabel "To" (edgeDestinyToString edge.to) UpdateEdgeTo
+                , viewInputNumber "Tru" edge.truth UpdateEdgeTruth
+                , viewInputNumber "Ind" edge.indeterminacy UpdateEdgeIndeterminacy
+                , viewInputNumber "Fal" edge.falsehood UpdateEdgeFalsehood
+                , viewFormButton "Add Edge"
+                ]
+            ]
+        ]
+
+
+viewSimulationForm : Model -> SimulationForm -> Html Msg
+viewSimulationForm model simNode =
+    div
+        [ class "accordion my-3"
+        , id "accordionExample"
+        ]
+        [ div
+            [ class "shadow card m-2 border-0"
+            , style "border-radius" "2rem"
+            , style "max-width" "260px"
+            ]
+            [ viewFormHeader "Simulate" DisplaySimForm
+            , form
+                [ class "collapse show"
+                , hidden model.simFormDisplay
+                , onSubmit AddSimNode
+                ]
+                [ div [ class "card-body p-3" ]
+                    [ viewInputNodeLabel "Label" simNode.simNodeLabel UpdateSimNodeLabel
+                    , viewInputNumber "Tru" simNode.simNodeTruth UpdateSimNodeTruth
+                    , viewInputNumber "Ind" simNode.simNodeIndeterminacy UpdateSimNodeIndeterminacy
+                    , viewInputNumber "Fal" simNode.simNodeFalsehood UpdateSimNodeFalsehood
+                    , viewFormButton "Simulate Node"
+                    ]
+                ]
+            ]
+        ]
+
+
+viewTargetNodeForm : Model -> TargetNodeForm -> Html Msg
+viewTargetNodeForm model targetNode =
+    div
+        [ class "accordion my-3"
+        , id "accordionExample"
+        ]
+        [ div
+            [ class "shadow card m-2 border-0"
+            , style "border-radius" "2rem"
+            , style "max-width" "260px"
+            ]
+            [ viewFormHeader "Target" DisplayTargetForm
+            , form
+                [ class "collapse show"
+                , hidden model.targetFormDisplay
+                , onSubmit AddTargetNode
+                ]
+                [ div [ class "card-body p-3" ]
+                    [ viewInputNodeLabel "Label" targetNode.targetNodeLabel UpdateTargetNodeLabel
+                    , viewFormButton "Add Target"
+                    ]
+                ]
+            ]
+        ]
+
+
+
+-- TABLES
+
+
+viewNodes : List NeutroNode -> Html Msg
+viewNodes nodes =
+    table
+        [ class "table" ]
+        (tr
+            []
+            [ th [ class "tb-header-label text-white" ] [ text "Label" ]
+            , th [ class "tb-header-label text-white" ] [ text "Tru" ]
+            , th [ class "tb-header-label text-white" ] [ text "Ind" ]
+            , th [ class "tb-header-label text-white" ] [ text "Fal" ]
+            , th [ class "tb-header-label text-white" ] [ text "" ]
+            ]
+            :: List.map viewNode nodes
+        )
+
+
+viewNode : NeutroNode -> Html Msg
+viewNode node =
+    tr []
+        [ td [ class "tb-header-label align-center text-white" ] [ text node.label ]
+        , td [ class "tb-header-label align-center text-white" ] [ text (String.fromFloat node.truth) ]
+        , td [ class "tb-header-label align-center text-white" ] [ text (String.fromFloat node.indeterminacy) ]
+        , td [ class "tb-header-label align-center text-white" ] [ text (String.fromFloat node.falsehood) ]
+        , td [ class "tb-header-label align-center text-white" ]
+            [ a
+                [ class "tb-header-label text-danger font-weight-bold"
+                , type_ "button"
+                , onClick (DeleteNode node.nodeId)
+                ]
+                [ text "X" ]
+            ]
+        ]
+
+
+viewEdges : List NeutroEdge -> Html Msg
+viewEdges edges =
+    table
+        [ class "table" ]
+        (tr
+            []
+            [ th [ class "tb-header-label text-white" ] [ text "From" ]
+            , th [ class "tb-header-label text-white" ] [ text "To" ]
+            , th [ class "tb-header-label text-white" ] [ text "Tru" ]
+            , th [ class "tb-header-label text-white" ] [ text "Ind" ]
+            , th [ class "tb-header-label text-white" ] [ text "Fal" ]
+            , th [ class "tb-header-label text-white" ] [ text "" ]
+            ]
+            :: List.map viewEdge edges
+        )
+
+
+viewEdge : NeutroEdge -> Html Msg
+viewEdge edge =
+    tr []
+        [ td [ class "tb-header-label text-white" ] [ text (String.fromInt edge.from) ]
+        , td [ class "tb-header-label text-white" ] [ text (String.fromInt edge.to) ]
+        , td [ class "tb-header-label text-white" ] [ text (String.fromFloat edge.truth) ]
+        , td [ class "tb-header-label text-white" ] [ text (String.fromFloat edge.indeterminacy) ]
+        , td [ class "tb-header-label text-white" ] [ text (String.fromFloat edge.falsehood) ]
+        , td [ class "tb-header-label text-white" ]
+            [ button
+                [ class "btn btn text-left"
+                , type_ "button"
+                , onClick (DeleteEdge edge.edgeId)
+                ]
+                [ text "X" ]
+            ]
+        ]
+
+
+viewSimulatedNodes : List SimulatedNode -> Html Msg
+viewSimulatedNodes simulatedNodes =
+    table
+        [ class "table" ]
+        (tr
+            []
+            [ th [ class "tb-header-label text-white" ] [ text "Label" ]
+            , th [ class "tb-header-label text-white" ] [ text "Tru" ]
+            , th [ class "tb-header-label text-white" ] [ text "Ind" ]
+            , th [ class "tb-header-label text-white" ] [ text "Fal" ]
+            , th [ class "tb-header-label text-white" ] [ text "" ]
+            ]
+            :: List.map viewSimulatedNode simulatedNodes
+        )
+
+
+viewSimulatedNode : SimulatedNode -> Html Msg
+viewSimulatedNode simulatedNode =
+    tr []
+        [ td [ class "tb-header-label text-white" ] [ text simulatedNode.simNodeLabel ]
+        , td [ class "tb-header-label text-white" ] [ text (String.fromFloat simulatedNode.simNodeTruth) ]
+        , td [ class "tb-header-label text-white" ] [ text (String.fromFloat simulatedNode.simNodeIndeterminacy) ]
+        , td [ class "tb-header-label text-white" ] [ text (String.fromFloat simulatedNode.simNodeFalsehood) ]
+        , td [ class "tb-header-label text-white" ]
+            [ button
+                [ class "btn btn text-left"
+                , type_ "button"
+                , onClick (DeleteSimNode simulatedNode.simNodeId)
+                ]
+                [ text "X" ]
+            ]
+        ]
+
+
+viewTargetNodes : List TargetNode -> Html Msg
+viewTargetNodes targetNodes =
+    table
+        [ class "table" ]
+        (tr
+            []
+            [ th [ class "tb-header-label text-white" ] [ text "Label" ]
+            , th [ class "tb-header-label text-white" ] [ text "" ]
+            ]
+            :: List.map viewTargetNode targetNodes
+        )
+
+
+viewTargetNode : TargetNode -> Html Msg
+viewTargetNode targetNode =
+    tr []
+        [ td [ class "tb-header-label text-white" ] [ text targetNode.targetNodeLabel ]
+        , td [ class "tb-header-label text-white" ]
+            [ button
+                [ class "btn btn text-left"
+                , type_ "button"
+                , onClick (DeleteTargetNode targetNode.targetNodeId)
+                ]
+                [ text "X" ]
+            ]
+        ]
+
+
+
+-- GRAPH
+
+
+neutroGraph : Model -> Graph String ()
+neutroGraph model =
+    let
+        nodeList =
+            List.map (\node -> node.label) model.nodes
+
+        edgeList =
+            List.map (\edge -> ( edge.from, edge.to )) model.edges
+    in
+    Graph.fromNodeLabelsAndEdgePairs
+        nodeList
+        edgeList
+
+
+
+-- SHARED COMPONENTS
 
 
 viewInputNumber : String -> NeutroField -> (String -> msg) -> Html msg
@@ -868,444 +1269,81 @@ viewInputNumber p val msg =
         []
 
 
-viewNodeForm : NodeForm -> Html Msg
-viewNodeForm node =
+viewInputNodeLabel : String -> String -> (String -> msg) -> Html msg
+viewInputNodeLabel p val msg =
+    input
+        [ type_ "text"
+        , class "my-3 w-100"
+        , placeholder p
+        , required True
+        , autofocus True
+        , value val
+        , onInput msg
+        ]
+        []
+
+
+viewInputEdgeLabel : String -> String -> (String -> msg) -> Html msg
+viewInputEdgeLabel p val msg =
+    input
+        [ type_ "text"
+        , class "my-2 w-50"
+        , placeholder p
+        , required True
+        , autofocus True
+        , value val
+        , onInput msg
+        ]
+        []
+
+
+viewFormButton : String -> Html msg
+viewFormButton p =
+    button
+        [ class "btn btn-outline-primary w-100 my-2 my-3"
+        , type_ "submit"
+        , style "border-radius" "2rem"
+        ]
+        [ text p ]
+
+
+viewFormHeader : String -> Msg -> Html Msg
+viewFormHeader p msg =
     div
-        [ class "accordion"
-        , id "accordionExample"
+        [ class "card-header bg-primary"
+        , id "headingOne"
+        , style "display" "flex"
         ]
+        [ h4 [ class "ml-4 pt-2 text-white" ]
+            [ text p ]
+        , button
+            [ class "btn ml-5 p-0"
+            , type_ "button"
+            ]
+            [ h1
+                [ class "m-0 ml-1 text-white"
+                , onClick msg
+                ]
+                [ text "+" ]
+            ]
+        ]
+
+
+viewTable : String -> (c -> Html msg) -> c -> Html msg
+viewTable title msg model =
+    div [ class "m-0 w-100" ]
         [ div
-            [ class "shadow card m-2 w-100 border-0"
-            , style "border-radius" "2rem"
-            , style "max-width" "260px"
+            [ class "bg-dark w-100 m-0" ]
+            [ p
+                [ class "p-1 m-0 text-white" ]
+                [ text title ]
             ]
-            [ div
-                [ class "card-header bg-primary"
-                , id "headingOne"
-                , style "display" "flex"
-                ]
-                [ h4 [ class "ml-4 pt-2 text-white" ]
-                    [ text "Node" ]
-                , button [ class "btn ml-5 p-0", type_ "button" ]
-                    [ h1 [ class "m-0 ml-1 text-white" ]
-                        [ text "+" ]
-                    ]
-                ]
-            , form
-                [ id "collapseOne"
-                , onSubmit AddNode
-                , class "collapse show"
-                ]
-                [ div [ class "card-body p-3" ]
-                    [ input
-                        [ type_ "text"
-                        , class "my-3 w-100"
-                        , placeholder "Label"
-                        , required True
-                        , autofocus True
-                        , value node.label
-                        , onInput UpdateNodeLabel
-                        ]
-                        []
-                    , viewInputNumber "Tru" node.truth UpdateNodeTruth
-                    , viewInputNumber "Ind" node.indeterminacy UpdateNodeIndeterminacy
-                    , input
-                        [ type_ "number"
-                        , class "w-25 ml-2"
-                        , Html.Attributes.min "0.0"
-                        , Html.Attributes.max "1.0"
-                        , placeholder "Fal"
-                        , required True
-                        , autofocus True
-                        , value (neutroFieldToString node.falsehood)
-                        , onInput UpdateNodeFalsehood
-                        ]
-                        []
-                    , button
-                        [ class "btn btn-outline-primary w-100 my-2 my-3"
-                        , type_ "submit"
-                        , style "border-radius" "2rem"
-
-                        --, disabled (checkFormIsEmpty node)
-                        ]
-                        [ text "Add Node" ]
-                    ]
-                ]
-            ]
+        , msg model
         ]
 
 
-viewNodes : List NeutroNode -> Html Msg
-viewNodes nodes =
-    table
-        [ class "table m-3" ]
-        (tr
-            []
-            [ th [ class "text-left", scope "col" ] [ text "Label" ]
-            , th [ class "text-left", scope "col" ] [ text "Tru" ]
-            , th [ class "text-left", scope "col" ] [ text "Ind" ]
-            , th [ class "text-left", scope "col" ] [ text "Fal" ]
-            , th [ class "text-left", scope "col" ] [ text "Remove" ]
-            ]
-            :: List.map viewNode nodes
-        )
 
-
-viewNode : NeutroNode -> Html Msg
-viewNode node =
-    tr []
-        [ td [ class "text-left" ] [ text node.label ]
-        , td [ class "text-left" ] [ text (String.fromFloat node.truth) ]
-        , td [ class "text-left" ] [ text (String.fromFloat node.indeterminacy) ]
-        , td [ class "text-left" ] [ text (String.fromFloat node.falsehood) ]
-        , td [ class "text-left" ]
-            [ button
-                [ class "btn btn text-left"
-                , type_ "button"
-                , onClick (DeleteNode node.nodeId)
-                ]
-                [ text "X" ]
-            ]
-        ]
-
-
-viewEdgeForm : EdgeForm -> Html Msg
-viewEdgeForm edge =
-    div
-        [ class "accordion my-3"
-        , id "accordionExample"
-        ]
-        [ div
-            [ class "shadow card m-2 w-100 border-0"
-            , style "border-radius" "2rem"
-            , style "max-width" "260px"
-            ]
-            [ div
-                [ class "card-header bg-primary"
-                , id "headingTwo"
-                , style "display" "flex"
-                ]
-                [ h4
-                    [ class "ml-4 pt-2 text-white" ]
-                    [ text "Edge" ]
-                , button
-                    [ class "btn ml-5 p-0"
-                    , type_ "button"
-                    ]
-                    [ h1
-                        [ class "m-0 ml-1 text-white" ]
-                        [ text "+" ]
-                    ]
-                ]
-            , div
-                []
-                [ input
-                    [ type_ "text"
-                    , class "my-2 w-50"
-                    , placeholder "From"
-                    , autofocus True
-                    , value (edgeOriginToString edge.from)
-                    , onInput UpdateEdgeFrom
-                    ]
-                    []
-                , input
-                    [ type_ "text"
-                    , class "my-2 w-50"
-                    , placeholder "To"
-                    , autofocus True
-                    , value (edgeDestinyToString edge.to)
-                    , onInput UpdateEdgeTo
-                    ]
-                    []
-                , input
-                    [ type_ "text"
-                    , class "w-25 mr-2"
-                    , placeholder "Tru"
-                    , autofocus True
-                    , value (neutroFieldToString edge.truth)
-                    , onInput UpdateEdgeTruth
-                    ]
-                    []
-                , input
-                    [ type_ "text"
-                    , class "w-25 mx-3"
-                    , placeholder "Ind"
-                    , autofocus True
-                    , value (neutroFieldToString edge.indeterminacy)
-                    , onInput UpdateEdgeIndeterminacy
-                    ]
-                    []
-                , input
-                    [ type_ "text"
-                    , class "w-25 ml-2"
-                    , placeholder "Fal"
-                    , autofocus True
-                    , value (neutroFieldToString edge.falsehood)
-                    , onInput UpdateEdgeFalsehood
-                    ]
-                    []
-                , button
-                    [ class "btn btn-outline-primary w-100 my-2 my-3"
-                    , type_ "submit"
-                    , style "border-radius" "2rem"
-
-                    --, disabled True
-                    , onClick AddEdge
-                    ]
-                    [ text "Add Edge" ]
-                ]
-            ]
-        ]
-
-
-viewEdges : List NeutroEdge -> Html Msg
-viewEdges edges =
-    table
-        [ class "table m-3" ]
-        (tr
-            []
-            [ th [ class "text-left", scope "col" ] [ text "From" ]
-            , th [ class "text-left", scope "col" ] [ text "To" ]
-            , th [ class "text-left", scope "col" ] [ text "Tru" ]
-            , th [ class "text-left", scope "col" ] [ text "Ind" ]
-            , th [ class "text-left", scope "col" ] [ text "Fal" ]
-            , th [ class "text-left", scope "col" ] [ text "Remove" ]
-            ]
-            :: List.map viewEdge edges
-        )
-
-
-viewEdge : NeutroEdge -> Html Msg
-viewEdge edge =
-    tr []
-        [ td [ class "text-left" ] [ text (String.fromInt edge.from) ]
-        , td [ class "text-left" ] [ text (String.fromInt edge.to) ]
-        , td [ class "text-left" ] [ text (String.fromFloat edge.truth) ]
-        , td [ class "text-left" ] [ text (String.fromFloat edge.indeterminacy) ]
-        , td [ class "text-left" ] [ text (String.fromFloat edge.falsehood) ]
-        , td [ class "text-left" ]
-            [ button
-                [ class "btn btn text-left"
-                , type_ "button"
-                , onClick (DeleteEdge edge.edgeId)
-                ]
-                [ text "X" ]
-            ]
-        ]
-
-
-viewSimulationForm : SimulationForm -> Html Msg
-viewSimulationForm simulatedNode =
-    div
-        [ class "accordion my-3"
-        , id "accordionExample"
-        ]
-        [ div
-            [ class "shadow card m-2 border-0"
-            , style "border-radius" "2rem"
-            , style "max-width" "260px"
-            ]
-            [ div
-                [ class "card-header bg-primary"
-                , id "headingThree"
-                , style "display" "flex"
-                ]
-                [ h4
-                    [ class "ml-4 pt-2 text-white" ]
-                    [ text "Simulate" ]
-                , button
-                    [ class "btn ml-3 p-0"
-                    , type_ "button"
-                    ]
-                    [ h1
-                        [ class "m-0 text-white" ]
-                        [ text "+" ]
-                    ]
-                ]
-            , div
-                [ id "collapseThree"
-                , class "collapse show"
-                ]
-                [ div
-                    [ class "card-body p-3" ]
-                    [ input
-                        [ type_ "text"
-                        , class "my-3 w-100"
-                        , placeholder "Label"
-                        , value simulatedNode.simNodeLabel
-                        , onInput UpdateSimNodeLabel
-                        ]
-                        []
-                    , input
-                        [ type_ "text"
-                        , class "w-25 mr-2"
-                        , placeholder "Tru"
-                        , value (neutroFieldToString simulatedNode.simNodeTruth)
-                        , onInput UpdateSimNodeTruth
-                        ]
-                        []
-                    , input
-                        [ type_ "text"
-                        , class "w-25 mx-3"
-                        , placeholder "Ind"
-                        , value (neutroFieldToString simulatedNode.simNodeIndeterminacy)
-                        , onInput UpdateSimNodeIndeterminacy
-                        ]
-                        []
-                    , input
-                        [ type_ "text"
-                        , class "w-25 ml-2"
-                        , placeholder "Fal"
-                        , value (neutroFieldToString simulatedNode.simNodeFalsehood)
-                        , onInput UpdateSimNodeFalsehood
-                        ]
-                        []
-                    , button
-                        [ class "btn btn-outline-primary w-100 my-2 my-3"
-                        , type_ "submit"
-                        , style "border-radius" "2rem"
-                        , onClick AddSimNode
-                        ]
-                        [ text "Add Simulation" ]
-                    ]
-                ]
-            ]
-        ]
-
-
-viewSimulatedNodes : List SimulatedNode -> Html Msg
-viewSimulatedNodes simulatedNodes =
-    table
-        [ class "table m-3" ]
-        (tr
-            []
-            [ th [ class "text-left", scope "col" ] [ text "Label" ]
-            , th [ class "text-left", scope "col" ] [ text "Tru" ]
-            , th [ class "text-left", scope "col" ] [ text "Ind" ]
-            , th [ class "text-left", scope "col" ] [ text "Fal" ]
-            , th [ class "text-left", scope "col" ] [ text "Remove" ]
-            ]
-            :: List.map viewSimulatedNode simulatedNodes
-        )
-
-
-viewSimulatedNode : SimulatedNode -> Html Msg
-viewSimulatedNode simulatedNode =
-    tr []
-        [ td [ class "text-left" ] [ text simulatedNode.simNodeLabel ]
-        , td [ class "text-left" ] [ text (String.fromFloat simulatedNode.simNodeTruth) ]
-        , td [ class "text-left" ] [ text (String.fromFloat simulatedNode.simNodeIndeterminacy) ]
-        , td [ class "text-left" ] [ text (String.fromFloat simulatedNode.simNodeFalsehood) ]
-        , td [ class "text-left" ]
-            [ button
-                [ class "btn btn text-left"
-                , type_ "button"
-                , onClick (DeleteSimNode simulatedNode.simNodeId)
-                ]
-                [ text "X" ]
-            ]
-        ]
-
-
-viewTargetNodeForm : TargetNodeForm -> Html Msg
-viewTargetNodeForm targetNode =
-    div
-        [ class "accordion my-3"
-        , id "accordionExample"
-        ]
-        [ div
-            [ class "shadow card m-2 border-0"
-            , style "border-radius" "2rem"
-            , style "max-width" "260px"
-            ]
-            [ div
-                [ class "card-header bg-primary"
-                , id "headingThree"
-                , style "display" "flex"
-                ]
-                [ h4
-                    [ class "ml-4 pt-2 text-white" ]
-                    [ text "Target" ]
-                , button
-                    [ class "btn ml-3 p-0"
-                    , type_ "button"
-                    ]
-                    [ h1
-                        [ class "m-0 text-white" ]
-                        [ text "+" ]
-                    ]
-                ]
-            , div
-                [ id "collapseThree"
-                , class "collapse show"
-                ]
-                [ div
-                    [ class "card-body p-3" ]
-                    [ input
-                        [ type_ "text"
-                        , class "my-3 w-100"
-                        , placeholder "Label"
-                        , value targetNode.targetNodeLabel
-                        , onInput UpdateTargetNodeLabel
-                        ]
-                        []
-                    , button
-                        [ class "btn btn-outline-primary w-100 my-2 my-3"
-                        , type_ "submit"
-                        , style "border-radius" "2rem"
-                        , onClick AddTargetNode
-                        ]
-                        [ text "Add Simulation" ]
-                    ]
-                ]
-            ]
-        ]
-
-
-viewTargetNodes : List TargetNode -> Html Msg
-viewTargetNodes targetNodes =
-    table
-        [ class "table m-3" ]
-        (tr
-            []
-            [ th [ class "text-left", scope "col" ] [ text "Label" ]
-            , th [ class "text-left", scope "col" ] [ text "Remove" ]
-            ]
-            :: List.map viewTargetNode targetNodes
-        )
-
-
-viewTargetNode : TargetNode -> Html Msg
-viewTargetNode targetNode =
-    tr []
-        [ td [ class "text-left" ] [ text targetNode.targetNodeLabel ]
-        , td [ class "text-left" ]
-            [ button
-                [ class "btn btn text-left"
-                , type_ "button"
-                , onClick (DeleteTargetNode targetNode.targetNodeId)
-                ]
-                [ text "X" ]
-            ]
-        ]
-
-
-neutroGraph : Model -> Graph String ()
-neutroGraph model =
-    let
-        nodeList =
-            List.map (\node -> node.label) model.nodes
-
-        edgeList =
-            List.map (\edge -> ( edge.from, edge.to )) model.edges
-    in
-    Graph.fromNodeLabelsAndEdgePairs
-        nodeList
-        edgeList
-
-
-
--- HANDLERS/HELPERS
+-- HELPERS
 
 
 neutroFieldToString : NeutroField -> String
@@ -1336,36 +1374,3 @@ edgeOriginToString from =
 
         From (Just _) origin ->
             origin
-
-
-
---checkFormIsEmpty : FormType -> Model -> Bool
---checkFormIsEmpty formType model =
---    case formType of
---        NodeForm ->
---            if model.nodeForm.label == "" then
---                True
---
---            else
---                False
---
---        EdgeForm ->
---            if model.edgeForm.from == "" then
---                True
---
---            else
---                False
---
---        SimulationNodeForm ->
---            if model.simulationForm.simNodeLabel == "" then
---                True
---
---            else
---                False
---
---        TargetNodeForm ->
---            if model.targetNodeForm.targetNodeLabel == "" then
---                True
---
---            else
---                False
