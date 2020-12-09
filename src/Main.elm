@@ -387,17 +387,17 @@ type Msg
     | AddEdge
     | AddSimNode
     | AddTargetNode
-      --
+      -- Deleting
     | DeleteNode Int
     | DeleteEdge Int
     | DeleteSimNode Int
     | DeleteTargetNode Int
-      --
+      -- Node
     | UpdateNodeLabel String
     | UpdateNodeTruth String
     | UpdateNodeIndeterminacy String
     | UpdateNodeFalsehood String
-      --
+      -- Edge
     | UpdateEdgeFrom String
     | UpdateEdgeTo String
     | UpdateEdgeTruth String
@@ -878,7 +878,9 @@ viewNodeForm node =
             , div [ id "collapseOne", class "collapse show" ]
                 [ div [ class "card-body p-3" ]
                     [ input
-                        [ type_ "text"
+                        [ type_ "number"
+                        , Html.Attributes.min "0.0"
+                        , Html.Attributes.max "1.0"
                         , class "my-3 w-100"
                         , placeholder "Label"
                         , autofocus True
