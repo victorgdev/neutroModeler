@@ -6,7 +6,7 @@ import Color exposing (Color)
 import Force exposing (State)
 import Graph exposing (Edge, Graph, Node, NodeId)
 import Html exposing (..)
-import Html.Attributes exposing (..)
+import Html.Attributes exposing (autofocus, class, id, placeholder, required, scope, step, style, type_, value)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
 import IntDict
@@ -852,6 +852,22 @@ view model =
         ]
 
 
+viewInputNumber : String -> NeutroField -> (String -> msg) -> Html msg
+viewInputNumber p val msg =
+    input
+        [ type_ "number"
+        , class "w-25 mr-2"
+        , placeholder p
+        , Html.Attributes.min "0.0"
+        , Html.Attributes.max "1.0"
+        , step "0.0001"
+        , required True
+        , value (neutroFieldToString val)
+        , onInput msg
+        ]
+        []
+
+
 viewNodeForm : NodeForm -> Html Msg
 viewNodeForm node =
     div
@@ -875,41 +891,31 @@ viewNodeForm node =
                         [ text "+" ]
                     ]
                 ]
-            , div [ id "collapseOne", class "collapse show" ]
+            , form
+                [ id "collapseOne"
+                , onSubmit AddNode
+                , class "collapse show"
+                ]
                 [ div [ class "card-body p-3" ]
                     [ input
-                        [ type_ "number"
-                        , Html.Attributes.min "0.0"
-                        , Html.Attributes.max "1.0"
+                        [ type_ "text"
                         , class "my-3 w-100"
                         , placeholder "Label"
+                        , required True
                         , autofocus True
                         , value node.label
                         , onInput UpdateNodeLabel
                         ]
                         []
+                    , viewInputNumber "Tru" node.truth UpdateNodeTruth
+                    , viewInputNumber "Ind" node.indeterminacy UpdateNodeIndeterminacy
                     , input
-                        [ type_ "text"
-                        , class "w-25 mr-2"
-                        , placeholder "Tru"
-                        , autofocus True
-                        , value (neutroFieldToString node.truth)
-                        , onInput UpdateNodeTruth
-                        ]
-                        []
-                    , input
-                        [ type_ "text"
-                        , class "w-25 mx-3"
-                        , placeholder "Ind"
-                        , autofocus True
-                        , value (neutroFieldToString node.indeterminacy)
-                        , onInput UpdateNodeIndeterminacy
-                        ]
-                        []
-                    , input
-                        [ type_ "text"
+                        [ type_ "number"
                         , class "w-25 ml-2"
+                        , Html.Attributes.min "0.0"
+                        , Html.Attributes.max "1.0"
                         , placeholder "Fal"
+                        , required True
                         , autofocus True
                         , value (neutroFieldToString node.falsehood)
                         , onInput UpdateNodeFalsehood
@@ -919,7 +925,6 @@ viewNodeForm node =
                         [ class "btn btn-outline-primary w-100 my-2 my-3"
                         , type_ "submit"
                         , style "border-radius" "2rem"
-                        , onClick AddNode
 
                         --, disabled (checkFormIsEmpty node)
                         ]
