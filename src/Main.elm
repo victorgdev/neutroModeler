@@ -31,11 +31,19 @@ type alias Model =
     , edges : List NeutroEdge
     , simulatedNodes : List SimulatedNode
     , targetNodes : List TargetNode
-    , form : Form
+    , nodeForm : NodeForm
     , edgeForm : EdgeForm
     , simulationForm : SimulationForm
     , targetNodeForm : TargetNodeForm
     }
+
+
+
+--type FormType
+--    = NodeForm
+--    | EdgeForm
+--    | SimulationNodeForm
+--    | TargetNodeForm
 
 
 type alias Entity =
@@ -51,7 +59,7 @@ type alias NodeId =
 
 
 type alias NeutroNode =
-    { id : NodeId
+    { nodeId : NodeId
     , label : String
     , truth : Float
     , indeterminacy : Float
@@ -99,8 +107,8 @@ type NeutroField
     = NeutroField (Maybe Float) String
 
 
-type alias Form =
-    { id : Int
+type alias NodeForm =
+    { nodeId : Int
     , label : String
     , truth : NeutroField
     , indeterminacy : NeutroField
@@ -175,9 +183,9 @@ updateWithStorage msg model =
     )
 
 
-defaultForm : Form
-defaultForm =
-    { id = 0
+defaultNodeForm : NodeForm
+defaultNodeForm =
+    { nodeId = 0
     , label = ""
     , truth = NeutroField Nothing ""
     , indeterminacy = NeutroField Nothing ""
@@ -244,7 +252,7 @@ initGraph model =
                     (\{ from, to } ->
                         { source = from
                         , target = to
-                        , distance = 100
+                        , distance = 300
                         , strength = Nothing
                         }
                     )
@@ -267,7 +275,7 @@ initModel =
     , edges = []
     , simulatedNodes = []
     , targetNodes = []
-    , form = defaultForm
+    , nodeForm = defaultNodeForm
     , edgeForm = defaultEdgeForm
     , simulationForm = defaultSimulationForm
     , targetNodeForm = defaultTargetNodeForm
@@ -346,16 +354,16 @@ nodeSize size node =
 
 nodeElement node =
     if node.label.value.rank < 5 then
-        nodeSize 4 node.label
+        nodeSize 16 node.label
 
     else if node.label.value.rank < 9 then
-        nodeSize 7 node.label
+        nodeSize 28 node.label
 
     else if modBy 2 node.label.value.rank == 0 then
         g []
-            [ nodeSize 9 node.label
+            [ nodeSize 36 node.label
             , circle
-                [ r 12
+                [ r 48
                 , cx node.label.x
                 , cy node.label.y
                 , fill PaintNone
@@ -365,7 +373,7 @@ nodeElement node =
             ]
 
     else
-        nodeSize 10 node.label
+        nodeSize 40 node.label
 
 
 
@@ -374,6 +382,7 @@ nodeElement node =
 
 type Msg
     = NoOp
+      -- Adding
     | AddNode
     | AddEdge
     | AddSimNode
@@ -394,12 +403,12 @@ type Msg
     | UpdateEdgeTruth String
     | UpdateEdgeIndeterminacy String
     | UpdateEdgeFalsehood String
-      --
+      -- Simulation Node
     | UpdateSimNodeLabel String
     | UpdateSimNodeTruth String
     | UpdateSimNodeIndeterminacy String
     | UpdateSimNodeFalsehood String
-      --
+      -- Target Node
     | UpdateTargetNodeLabel String
 
 
@@ -412,18 +421,18 @@ update msg model =
         AddNode ->
             let
                 newNode =
-                    { id = model.form.id + 1
-                    , label = model.form.label
-                    , truth = model.form.truth |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
-                    , indeterminacy = model.form.indeterminacy |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
-                    , falsehood = model.form.falsehood |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    { nodeId = model.nodeForm.nodeId + 1
+                    , label = model.nodeForm.label
+                    , truth = model.nodeForm.truth |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    , indeterminacy = model.nodeForm.indeterminacy |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    , falsehood = model.nodeForm.falsehood |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
                     }
 
                 newForm =
-                    { defaultForm | id = 0 }
+                    { defaultNodeForm | nodeId = 0 }
             in
             ( { model
-                | form = newForm
+                | nodeForm = newForm
                 , nodes =
                     model.nodes ++ [ newNode ]
               }
@@ -495,7 +504,7 @@ update msg model =
             )
 
         DeleteNode nodeId ->
-            ( { model | nodes = List.filter (\n -> n.id /= nodeId) model.nodes }
+            ( { model | nodes = List.filter (\n -> n.nodeId /= nodeId) model.nodes }
             , Cmd.none
             )
 
@@ -517,17 +526,17 @@ update msg model =
         UpdateNodeLabel newLabel ->
             let
                 oldForm =
-                    model.form
+                    model.nodeForm
 
                 newForm =
                     { oldForm | label = newLabel }
             in
-            ( { model | form = newForm }, Cmd.none )
+            ( { model | nodeForm = newForm }, Cmd.none )
 
         UpdateNodeTruth newTruth ->
             let
                 oldForm =
-                    model.form
+                    model.nodeForm
 
                 newForm =
                     if String.right 1 newTruth == "." then
@@ -545,12 +554,12 @@ update msg model =
                             Just t ->
                                 { oldForm | truth = NeutroField (Just t) newTruth }
             in
-            ( { model | form = newForm }, Cmd.none )
+            ( { model | nodeForm = newForm }, Cmd.none )
 
         UpdateNodeIndeterminacy newIndeterminacy ->
             let
                 oldForm =
-                    model.form
+                    model.nodeForm
 
                 newForm =
                     if String.right 1 newIndeterminacy == "." then
@@ -568,12 +577,12 @@ update msg model =
                             Just p ->
                                 { oldForm | indeterminacy = NeutroField (Just p) newIndeterminacy }
             in
-            ( { model | form = newForm }, Cmd.none )
+            ( { model | nodeForm = newForm }, Cmd.none )
 
         UpdateNodeFalsehood newFalsehood ->
             let
                 oldForm =
-                    model.form
+                    model.nodeForm
 
                 newForm =
                     if String.right 1 newFalsehood == "." then
@@ -591,7 +600,7 @@ update msg model =
                             Just p ->
                                 { oldForm | falsehood = NeutroField (Just p) newFalsehood }
             in
-            ( { model | form = newForm }, Cmd.none )
+            ( { model | nodeForm = newForm }, Cmd.none )
 
         UpdateEdgeFrom newFrom ->
             let
@@ -808,7 +817,7 @@ view model =
         [ class "app" ]
         [ div
             [ class "bar-scroll col-3 border-right border-info" ]
-            [ viewNodeForm model.form
+            [ viewNodeForm model.nodeForm
             , viewEdgeForm model.edgeForm
             , viewSimulationForm model.simulationForm
             , viewTargetNodeForm model.targetNodeForm
@@ -843,7 +852,7 @@ view model =
         ]
 
 
-viewNodeForm : Form -> Html Msg
+viewNodeForm : NodeForm -> Html Msg
 viewNodeForm node =
     div
         [ class "accordion"
@@ -909,7 +918,8 @@ viewNodeForm node =
                         , type_ "submit"
                         , style "border-radius" "2rem"
                         , onClick AddNode
-                        , disabled (checkFormIsEmpty node)
+
+                        --, disabled (checkFormIsEmpty node)
                         ]
                         [ text "Add Node" ]
                     ]
@@ -945,7 +955,7 @@ viewNode node =
             [ button
                 [ class "btn btn text-left"
                 , type_ "button"
-                , onClick (DeleteNode node.id)
+                , onClick (DeleteNode node.nodeId)
                 ]
                 [ text "X" ]
             ]
@@ -1321,10 +1331,34 @@ edgeOriginToString from =
             origin
 
 
-checkFormIsEmpty : Form -> Bool
-checkFormIsEmpty form =
-    if form.label == "" then
-        True
 
-    else
-        False
+--checkFormIsEmpty : FormType -> Model -> Bool
+--checkFormIsEmpty formType model =
+--    case formType of
+--        NodeForm ->
+--            if model.nodeForm.label == "" then
+--                True
+--
+--            else
+--                False
+--
+--        EdgeForm ->
+--            if model.edgeForm.from == "" then
+--                True
+--
+--            else
+--                False
+--
+--        SimulationNodeForm ->
+--            if model.simulationForm.simNodeLabel == "" then
+--                True
+--
+--            else
+--                False
+--
+--        TargetNodeForm ->
+--            if model.targetNodeForm.targetNodeLabel == "" then
+--                True
+--
+--            else
+--                False
