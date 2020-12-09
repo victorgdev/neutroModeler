@@ -1,0 +1,23 @@
+{
+  "name": "neutroModeler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "elm.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/victorgdev/neutroModeler.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/victorgdev/neutroModeler/issues"
+  },
+  "homepage": "https://github.com/victorgdev/neutroModeler#readme",
+  "devDependencies": {
+    "elm-format": "^0.8.4"
+  }
+}
