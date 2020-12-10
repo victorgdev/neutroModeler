@@ -17,11 +17,39 @@ import Scale exposing (SequentialScale)
 import Scale.Color
 import Task
 import Time
-import TypedSvg exposing (circle, g, line, svg, title)
-import TypedSvg.Attributes exposing (class, fill, stroke, viewBox)
+import TypedSvg exposing (circle, g, line, polygon, svg)
+import TypedSvg.Attributes exposing (fill, points, stroke, viewBox)
 import TypedSvg.Attributes.InPx exposing (cx, cy, r, strokeWidth, x1, x2, y1, y2)
-import TypedSvg.Core exposing (Attribute, Svg, text)
+import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..))
+
+
+
+-- MAIN
+
+
+main : Program () Model Msg
+main =
+    Browser.document
+        { init = init
+        , view = \model -> { title = "NeutroModeler", body = [ view model ] }
+        , update = updateWithStorage
+        , subscriptions = \_ -> Sub.none
+        }
+
+
+port setStorage : List NeutroNode -> Cmd msg
+
+
+updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
+updateWithStorage msg model =
+    let
+        ( newModel, cmds ) =
+            update msg model
+    in
+    ( newModel
+    , Cmd.batch [ setStorage newModel.nodes, cmds ]
+    )
 
 
 
@@ -45,15 +73,7 @@ type alias Model =
 
 
 
--- MODEL ELEMENTS
-
-
-type alias Entity =
-    Force.Entity NodeId { value : CustomNode }
-
-
-type alias CustomNode =
-    { rank : Int, name : String }
+-- TYPES
 
 
 type alias NodeId =
@@ -101,6 +121,18 @@ type alias TargetNode =
 -- FORMS
 
 
+type From
+    = From (Maybe Int) String
+
+
+type To
+    = To (Maybe Int) String
+
+
+type NeutroField
+    = NeutroField (Maybe Float) String
+
+
 type alias NodeForm =
     { nodeId : Int
     , label : String
@@ -142,59 +174,20 @@ type alias TargetNodeForm =
     }
 
 
-type From
-    = From (Maybe Int) String
+
+-- GRAPH TYPES
 
 
-type To
-    = To (Maybe Int) String
+type alias Entity =
+    Force.Entity NodeId { value : CustomNode }
 
 
-type NeutroField
-    = NeutroField (Maybe Float) String
+type alias CustomNode =
+    { rank : Int, name : String }
 
 
 
--- DEFAULTS
-
-
-w : Float
-w =
-    990
-
-
-h : Float
-h =
-    504
-
-
-colorScale : SequentialScale Color
-colorScale =
-    Scale.sequential Scale.Color.viridisInterpolator ( 200, 700 )
-
-
-main : Program () Model Msg
-main =
-    Browser.document
-        { init = init
-        , view = \model -> { title = "NeutroModeler", body = [ view model ] }
-        , update = updateWithStorage
-        , subscriptions = \_ -> Sub.none
-        }
-
-
-port setStorage : List NeutroNode -> Cmd msg
-
-
-updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
-updateWithStorage msg model =
-    let
-        ( newModel, cmds ) =
-            update msg model
-    in
-    ( newModel
-    , Cmd.batch [ setStorage newModel.nodes, cmds ]
-    )
+-- MODEL DEFAULTS
 
 
 hideNodeForm : NodeForm
@@ -287,6 +280,49 @@ displayTargetNodeForm =
     }
 
 
+initModel : Model
+initModel =
+    { nodes = []
+    , edges = []
+    , simulatedNodes = []
+    , targetNodes = []
+    , nodeForm = hideNodeForm
+    , edgeForm = hideEdgeForm
+    , simulationForm = hideSimulationForm
+    , targetNodeForm = hideTargetNodeForm
+    , nodeFormDisplay = True
+    , edgeFormDisplay = True
+    , simFormDisplay = True
+    , targetFormDisplay = True
+    }
+
+
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( initModel
+    , Cmd.none
+    )
+
+
+
+-- GRAPH DEFAULTS
+
+
+w : Float
+w =
+    990
+
+
+h : Float
+h =
+    504
+
+
+colorScale : SequentialScale Color
+colorScale =
+    Scale.sequential Scale.Color.viridisInterpolator ( 200, 700 )
+
+
 initGraph : Model -> Graph Entity ()
 initGraph model =
     let
@@ -332,30 +368,6 @@ initGraph model =
         |> updateGraphWithList graph
 
 
-initModel : Model
-initModel =
-    { nodes = []
-    , edges = []
-    , simulatedNodes = []
-    , targetNodes = []
-    , nodeForm = hideNodeForm
-    , edgeForm = hideEdgeForm
-    , simulationForm = hideSimulationForm
-    , targetNodeForm = hideTargetNodeForm
-    , nodeFormDisplay = True
-    , edgeFormDisplay = True
-    , simFormDisplay = True
-    , targetFormDisplay = True
-    }
-
-
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( initModel
-    , Cmd.none
-    )
-
-
 updateGraphWithList : Graph Entity () -> List Entity -> Graph Entity ()
 updateGraphWithList =
     let
@@ -365,6 +377,7 @@ updateGraphWithList =
     List.foldr (\node graph -> Graph.update node.id (graphUpdater node) graph)
 
 
+updateContextWithValue : { a | node : { b | label : c } } -> c -> { a | node : { b | label : c } }
 updateContextWithValue nodeCtx value =
     let
         node =
