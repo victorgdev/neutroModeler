@@ -16,6 +16,7 @@
             "elm-community/intdict": "3.0.0",
             "elm-community/typed-svg": "6.0.0",
             "gampleman/elm-visualization": "2.1.2",
+            "icidasset/elm-material-icons": "5.0.0",
             "mpizenberg/elm-pointer-events": "4.0.2"
         },
         "indirect": {

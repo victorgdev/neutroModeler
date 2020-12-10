@@ -1,5 +1,15 @@
 port module Main exposing (..)
 
+{-
+   TODOs
+      - Implement Ordinary Kpi function
+      - Implement Run functionality -- Only after backend implementation
+      - Implement Create Label for the nodes
+      - Implement Force Directed Graph interactive graph drag and drop
+      - Tooltip - tips and explanations modals
+      - Icons for the buttons
+-}
+
 import Browser
 import Browser.Dom as Dom
 import Browser.Events
@@ -7,12 +17,13 @@ import Color exposing (Color)
 import Force exposing (State)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Html exposing (..)
-import Html.Attributes exposing (autofocus, class, hidden, id, placeholder, required, step, style, type_, value)
+import Html.Attributes exposing (autofocus, class, disabled, hidden, id, placeholder, required, src, step, style, type_, value)
 import Html.Events exposing (..)
 import Html.Events.Extra.Mouse as Mouse
 import IntDict
 import Json.Decode as Decode
 import List exposing (range)
+import Material.Icons.Round as Icon exposing (add, center_focus_weak, cloud_download, cloud_upload, delete_outline, folder, login, save, share)
 import Scale exposing (SequentialScale)
 import Scale.Color
 import Task
@@ -57,10 +68,13 @@ updateWithStorage msg model =
 
 
 type alias Model =
+    -- Elements
     { nodes : List NeutroNode
     , edges : List NeutroEdge
     , simulatedNodes : List SimulatedNode
     , targetNodes : List TargetNode
+
+    -- Forms
     , nodeForm : NodeForm
     , edgeForm : EdgeForm
     , simulationForm : SimulationForm
@@ -69,6 +83,16 @@ type alias Model =
     , edgeFormDisplay : Bool
     , simFormDisplay : Bool
     , targetFormDisplay : Bool
+
+    -- KPIs
+    , numConcepts : Int -- number of nodes
+    , numConnections : Int -- number of edges
+    , numTransmitters : Int -- number of nodes that transmit impact (edges)
+    , numReceivers : Int -- number of nodes that receive impact (edges)
+    , numOrdinary : Int -- number of nodes that transmit and receive impact (edges)
+    , cnScore : Float -- connections (edges) / concepts (nodes) ratio
+    , complexityScore : Float -- transmitters nodes / receivers nodes ratio
+    , densityScore : Float -- connections (edges) / (concepts (nodes) * (concepts (nodes) - 1)) ratio
     }
 
 
@@ -282,10 +306,13 @@ displayTargetNodeForm =
 
 initModel : Model
 initModel =
+    -- Elements
     { nodes = []
     , edges = []
     , simulatedNodes = []
     , targetNodes = []
+
+    -- Forms
     , nodeForm = hideNodeForm
     , edgeForm = hideEdgeForm
     , simulationForm = hideSimulationForm
@@ -294,6 +321,16 @@ initModel =
     , edgeFormDisplay = True
     , simFormDisplay = True
     , targetFormDisplay = True
+
+    -- KPIs
+    , numConcepts = 0
+    , numConnections = 0
+    , numTransmitters = 0
+    , numReceivers = 0
+    , numOrdinary = 0
+    , cnScore = 0.0
+    , complexityScore = 0.0
+    , densityScore = 0.0
     }
 
 
@@ -456,6 +493,20 @@ nodeElement node =
         nodeSize 40 node.label
 
 
+neutroGraph : Model -> Graph String ()
+neutroGraph model =
+    let
+        nodeList =
+            List.map (\node -> node.label) model.nodes
+
+        edgeList =
+            List.map (\edge -> ( edge.from, edge.to )) model.edges
+    in
+    Graph.fromNodeLabelsAndEdgePairs
+        nodeList
+        edgeList
+
+
 
 -- UPDATE
 
@@ -472,6 +523,7 @@ type Msg
     | DeleteEdge Int
     | DeleteSimNode Int
     | DeleteTargetNode Int
+    | DeleteModel
       -- Node
     | UpdateNodeLabel String
     | UpdateNodeTruth String
@@ -520,6 +572,25 @@ update msg model =
                 | nodeForm = newForm
                 , nodes =
                     model.nodes ++ [ newNode ]
+                , numConcepts = model.numConcepts + 1
+                , cnScore =
+                    if isNaN (toFloat model.numConnections / toFloat model.numConcepts) == True then
+                        0.0
+
+                    else
+                        toFloat model.numConnections / toFloat model.numConcepts
+                , complexityScore =
+                    if isNaN (toFloat model.numTransmitters / toFloat model.numReceivers) == True then
+                        0.0
+
+                    else
+                        toFloat model.numTransmitters / toFloat model.numReceivers
+                , densityScore =
+                    if isNaN (toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)) == True then
+                        0.0
+
+                    else
+                        toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)
               }
             , Cmd.none
             )
@@ -542,6 +613,27 @@ update msg model =
                 | edgeForm = newEdgeForm
                 , edges =
                     model.edges ++ [ newEdge ]
+                , numConnections = model.numConnections + 1
+                , numTransmitters = model.numTransmitters + 1
+                , numReceivers = model.numReceivers + 1
+                , cnScore =
+                    if isNaN (toFloat model.numConnections / toFloat model.numConcepts) == True then
+                        0.0
+
+                    else
+                        toFloat model.numConnections / toFloat model.numConcepts
+                , complexityScore =
+                    if isNaN (toFloat model.numTransmitters / toFloat model.numReceivers) == True then
+                        0.0
+
+                    else
+                        toFloat model.numTransmitters / toFloat model.numReceivers
+                , densityScore =
+                    if isNaN (toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)) == True then
+                        0.0
+
+                    else
+                        toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)
               }
             , Cmd.none
             )
@@ -607,6 +699,9 @@ update msg model =
             ( { model | targetNodes = List.filter (\n -> n.targetNodeId /= nodeId) model.targetNodes }
             , Cmd.none
             )
+
+        DeleteModel ->
+            ( initModel, Cmd.none )
 
         UpdateNodeLabel newLabel ->
             let
@@ -905,6 +1000,9 @@ update msg model =
 
                     else
                         displayNodeForm
+                , edgeFormDisplay = True
+                , simFormDisplay = True
+                , targetFormDisplay = True
               }
             , Cmd.none
             )
@@ -923,11 +1021,18 @@ update msg model =
 
                     else
                         displayEdgeForm
+                , nodeFormDisplay = True
+                , simFormDisplay = True
+                , targetFormDisplay = True
               }
             , Cmd.none
             )
 
         DisplaySimForm ->
+            let
+                nodeDisplay =
+                    model.nodeFormDisplay
+            in
             ( { model
                 | simFormDisplay =
                     if model.simFormDisplay == True then
@@ -941,6 +1046,9 @@ update msg model =
 
                     else
                         displaySimulationForm
+                , nodeFormDisplay = True
+                , edgeFormDisplay = True
+                , targetFormDisplay = True
               }
             , Cmd.none
             )
@@ -959,6 +1067,9 @@ update msg model =
 
                     else
                         displayTargetNodeForm
+                , nodeFormDisplay = True
+                , edgeFormDisplay = True
+                , simFormDisplay = True
               }
             , Cmd.none
             )
@@ -973,34 +1084,48 @@ view model =
     div
         [ class "app bg-dark" ]
         [ div
-            [ class "bar-scroll col-3 text-center"
+            [ class "overflow-hidden col-3 m-0 p-0 text-center"
             , style "position" "relative"
             ]
             [ div
-                [ style "position" "absolute"
+                [ class "d-inline-block mx-3"
+                , style "position" "absolute"
                 , style "top" "50%"
-                , style "transform" "translate(-50%, -50%)"
-                , style "display" "inline-block"
+                , style "transform" "translate(-75%, -50%)"
                 ]
-                [ viewNodeForm model model.nodeForm
+                [ img
+                    [ class "mb-5"
+                    , style "width" "180px"
+                    , src "https://uploads-ssl.webflow.com/5e4e898f09bfea6abb6f44be/5e4ede46179566acc07948ca_complete.svg"
+                    ]
+                    []
+                , viewNodeForm model model.nodeForm
                 , viewEdgeForm model model.edgeForm
                 , viewSimulationForm model model.simulationForm
                 , viewTargetNodeForm model model.targetNodeForm
                 , button
-                    [ class "btn btn-sm btn-outline-success w-50 mt-5 px-1"
+                    [ class "shadow btn btn-sm btn-outline-success w-100 mt-5 px-1"
                     , type_ "submit"
                     , style "border-radius" "2rem"
+                    , onClick DeleteModel
                     ]
-                    [ text "Run" ]
+                    [ text "Run Model" ]
                 , button
-                    [ class "btn btn-sm btn-outline-danger w-50 mt-5 px-1"
+                    [ class "shadow btn btn-sm btn-outline-danger w-100 my-2 px-1"
                     , type_ "submit"
                     , style "border-radius" "2rem"
+                    , onClick DeleteModel
                     ]
-                    [ text "Cancel" ]
+                    [ text "Delete Model" ]
+                , viewMenuButton "Save"
+                , viewMenuButton "Open"
+                , viewMenuButton "Import"
+                , viewMenuButton "Export"
+                , viewMenuButton "Logout"
                 ]
             ]
-        , div [ class "col-6 bg-dark text-white" ]
+        , div
+            [ class "col-6 bg-dark text-white" ]
             [ svg [ viewBox 0 0 w h ]
                 [ g [ TypedSvg.Attributes.class [ "links" ] ] <|
                     List.map (linkElement (initGraph model)) <|
@@ -1011,11 +1136,30 @@ view model =
                 ]
             ]
         , div
-            [ class "shadow bar-scroll col-3 border-left border-secondary" ]
-            [ viewTable "Nodes" viewNodes model.nodes
-            , viewTable "Edges" viewEdges model.edges
-            , viewTable "Simulation" viewSimulatedNodes model.simulatedNodes
-            , viewTable "Target" viewTargetNodes model.targetNodes
+            [ class "shadow overflow-hidden bar-scroll col-3" ]
+            [ div [ class "m-0 w-100" ]
+                [ div
+                    [ class "bg-dark w-100 mt-2" ]
+                    [ p
+                        [ class "p-1 m-0 text-primary border-bottom border-white" ]
+                        [ text "Model KPIs" ]
+                    , table
+                        [ class "my-3" ]
+                        [ viewRow "# Nodes:" model.numConcepts
+                        , viewRow "# Edges:" model.numConnections
+                        , viewRow "# Transmitters:" model.numTransmitters
+                        , viewRow "# Receivers:" model.numReceivers
+                        , viewRow "# Ordinary:" model.numOrdinary
+                        , viewRowFloat "C/N Score:" model.cnScore
+                        , viewRowFloat "Complexity" model.complexityScore
+                        , viewRowFloat "Density" model.densityScore
+                        ]
+                    , viewTable "Nodes" viewNodes model.nodes
+                    , viewTable "Edges" viewEdges model.edges
+                    , viewTable "Simulation" viewSimulatedNodes model.simulatedNodes
+                    , viewTable "Target" viewTargetNodes model.targetNodes
+                    ]
+                ]
             ]
         ]
 
@@ -1071,12 +1215,17 @@ viewEdgeForm model edge =
                 , hidden model.edgeFormDisplay
                 , onSubmit AddEdge
                 ]
-                [ viewInputEdgeLabel "From" (edgeOriginToString edge.from) UpdateEdgeFrom
-                , viewInputEdgeLabel "To" (edgeDestinyToString edge.to) UpdateEdgeTo
-                , viewInputNumber "Tru" edge.truth UpdateEdgeTruth
-                , viewInputNumber "Ind" edge.indeterminacy UpdateEdgeIndeterminacy
-                , viewInputNumber "Fal" edge.falsehood UpdateEdgeFalsehood
-                , viewFormButton "Add Edge"
+                [ div
+                    [ class "card-body p-3"
+                    , style "align-items" "center"
+                    ]
+                    [ viewInputEdgeLabel "From" (edgeOriginToString edge.from) UpdateEdgeFrom
+                    , viewInputEdgeLabel "To" (edgeDestinyToString edge.to) UpdateEdgeTo
+                    , viewInputNumber "Tru" edge.truth UpdateEdgeTruth
+                    , viewInputNumber "Ind" edge.indeterminacy UpdateEdgeIndeterminacy
+                    , viewInputNumber "Fal" edge.falsehood UpdateEdgeFalsehood
+                    , viewFormButton "Add Edge"
+                    ]
                 ]
             ]
         ]
@@ -1147,11 +1296,12 @@ viewNodes nodes =
         [ class "table" ]
         (tr
             [ class "border-bottom border-secondary" ]
-            [ th [ class "tb-header-label text-white text-left" ] [ text "Label" ]
-            , th [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
-            , th [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
-            , th [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
-            , th [ class "tb-header-label text-white text-right" ] [ text "" ]
+            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
+            , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "" ]
             ]
             :: List.map viewNode nodes
         )
@@ -1161,6 +1311,7 @@ viewNode : NeutroNode -> Html Msg
 viewNode node =
     tr []
         [ td [ class "tb-header-label align-center text-white align-middle text-left border-0" ] [ text node.label ]
+        , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.truth) ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.indeterminacy) ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.falsehood) ]
@@ -1181,12 +1332,12 @@ viewEdges edges =
         [ class "table" ]
         (tr
             [ class "border-bottom border-secondary" ]
-            [ th [ class "tb-header-label text-white text-right text-center" ] [ text "From" ]
-            , th [ class "tb-header-label text-white text-right text-center" ] [ text "To" ]
-            , th [ class "tb-header-label text-white text-right text-right" ] [ text "Tru" ]
-            , th [ class "tb-header-label text-white text-right text-right" ] [ text "Ind" ]
-            , th [ class "tb-header-label text-white text-right text-right" ] [ text "Fal" ]
-            , th [ class "tb-header-label text-white text-right text-right" ] [ text "" ]
+            [ td [ class "tb-header-label text-white text-left" ] [ text "From" ]
+            , td [ class "tb-header-label text-white text-center" ] [ text "To" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "" ]
             ]
             :: List.map viewEdge edges
         )
@@ -1195,13 +1346,13 @@ viewEdges edges =
 viewEdge : NeutroEdge -> Html Msg
 viewEdge edge =
     tr []
-        [ td [ class "tb-header-label text-white align-middle text-center border-0" ] [ text (String.fromInt edge.from) ]
+        [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text (String.fromInt edge.from) ]
         , td [ class "tb-header-label text-white align-middle text-center border-0" ] [ text (String.fromInt edge.to) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat edge.truth) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat edge.indeterminacy) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat edge.falsehood) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ]
-            [ button
+            [ a
                 [ class "tb-header-label text-danger font-weight-bold"
                 , type_ "button"
                 , onClick (DeleteEdge edge.edgeId)
@@ -1217,11 +1368,12 @@ viewSimulatedNodes simulatedNodes =
         [ class "table" ]
         (tr
             [ class "border-bottom border-secondary" ]
-            [ th [ class "tb-header-label text-white text-left" ] [ text "Label" ]
-            , th [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
-            , th [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
-            , th [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
-            , th [ class "tb-header-label text-white text-right" ] [ text "" ]
+            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
+            , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "" ]
             ]
             :: List.map viewSimulatedNode simulatedNodes
         )
@@ -1231,11 +1383,12 @@ viewSimulatedNode : SimulatedNode -> Html Msg
 viewSimulatedNode simulatedNode =
     tr []
         [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text simulatedNode.simNodeLabel ]
+        , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeTruth) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeIndeterminacy) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeFalsehood) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ]
-            [ button
+            [ a
                 [ class "tb-header-label text-danger font-weight-bold"
                 , type_ "button"
                 , onClick (DeleteSimNode simulatedNode.simNodeId)
@@ -1251,8 +1404,8 @@ viewTargetNodes targetNodes =
         [ class "table" ]
         (tr
             [ class "border-bottom border-secondary" ]
-            [ th [ class "tb-header-label text-white text-left" ] [ text "Label" ]
-            , th [ class "tb-header-label text-white text-right" ] [ text "" ]
+            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "" ]
             ]
             :: List.map viewTargetNode targetNodes
         )
@@ -1263,7 +1416,7 @@ viewTargetNode targetNode =
     tr []
         [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text targetNode.targetNodeLabel ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ]
-            [ button
+            [ a
                 [ class "tb-header-label text-danger font-weight-bold"
                 , type_ "button"
                 , onClick (DeleteTargetNode targetNode.targetNodeId)
@@ -1271,24 +1424,6 @@ viewTargetNode targetNode =
                 [ text "X" ]
             ]
         ]
-
-
-
--- GRAPH
-
-
-neutroGraph : Model -> Graph String ()
-neutroGraph model =
-    let
-        nodeList =
-            List.map (\node -> node.label) model.nodes
-
-        edgeList =
-            List.map (\edge -> ( edge.from, edge.to )) model.edges
-    in
-    Graph.fromNodeLabelsAndEdgePairs
-        nodeList
-        edgeList
 
 
 
@@ -1304,7 +1439,7 @@ viewInputNumber p val msg =
         , placeholder p
         , Html.Attributes.min "0.0"
         , Html.Attributes.max "1.0"
-        , step "0.0001"
+        , step "0.01"
         , required True
         , value (neutroFieldToString val)
         , onInput msg
@@ -1331,7 +1466,8 @@ viewInputEdgeLabel : String -> String -> (String -> msg) -> Html msg
 viewInputEdgeLabel p val msg =
     input
         [ type_ "text"
-        , class "my-2 w-50"
+        , class "mb-3 mx-1"
+        , style "width" "60px"
         , placeholder p
         , required True
         , autofocus True
@@ -1347,6 +1483,17 @@ viewFormButton p =
         [ class "btn btn-sm btn-outline-primary w-100 mt-3"
         , type_ "submit"
         , style "border-radius" "2rem"
+        ]
+        [ text p ]
+
+
+viewMenuButton : String -> Html msg
+viewMenuButton p =
+    button
+        [ class "shadow btn btn-sm btn-outline-secondary btn-circle mt-2 mx-1 px-1"
+        , type_ "submit"
+        , style "border-radius" "2rem"
+        , disabled True
         ]
         [ text p ]
 
@@ -1374,10 +1521,28 @@ viewTable title msg model =
         [ div
             [ class "bg-dark w-100 m-0" ]
             [ p
-                [ class "p-1 m-0 text-white" ]
+                [ class "p-1 m-0 text-primary" ]
                 [ text title ]
             ]
         , msg model
+        ]
+
+
+viewRow : String -> Int -> Html msg
+viewRow p kpi =
+    tr
+        []
+        [ td [ class "tb-header-label text-white align-middle text-left" ] [ text p ]
+        , td [ class "tb-header-label text-white align-middle text-right pl-3" ] [ text (String.fromInt kpi) ]
+        ]
+
+
+viewRowFloat : String -> Float -> Html msg
+viewRowFloat p kpi =
+    tr
+        []
+        [ td [ class "tb-header-label text-white align-middle text-left" ] [ text p ]
+        , td [ class "tb-header-label text-white align-middle text-right pl-3" ] [ text (String.fromFloat kpi) ]
         ]
 
 
