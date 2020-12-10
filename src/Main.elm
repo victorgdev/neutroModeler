@@ -2,23 +2,25 @@ port module Main exposing (..)
 
 import Browser
 import Browser.Dom as Dom
+import Browser.Events
 import Color exposing (Color)
 import Force exposing (State)
-import Graph exposing (Edge, Graph, Node, NodeId)
+import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Html exposing (..)
-import Html.Attributes exposing (autofocus, class, hidden, id, placeholder, required, scope, step, style, type_, value)
+import Html.Attributes exposing (autofocus, class, hidden, id, placeholder, required, step, style, type_, value)
 import Html.Events exposing (..)
-import Html.Keyed as Keyed
+import Html.Events.Extra.Mouse as Mouse
 import IntDict
-import Json.Decode as Json
+import Json.Decode as Decode
 import List exposing (range)
 import Scale exposing (SequentialScale)
 import Scale.Color
 import Task
-import TypedSvg exposing (circle, g, line, polygon, svg, title)
-import TypedSvg.Attributes exposing (fill, points, stroke, viewBox)
+import Time
+import TypedSvg exposing (circle, g, line, svg, title)
+import TypedSvg.Attributes exposing (class, fill, stroke, viewBox)
 import TypedSvg.Attributes.InPx exposing (cx, cy, r, strokeWidth, x1, x2, y1, y2)
-import TypedSvg.Core exposing (Svg)
+import TypedSvg.Core exposing (Attribute, Svg, text)
 import TypedSvg.Types exposing (Paint(..))
 
 
@@ -958,11 +960,32 @@ view model =
     div
         [ class "app bg-dark" ]
         [ div
-            [ class "bar-scroll col-3 border-right border-info" ]
-            [ viewNodeForm model model.nodeForm
-            , viewEdgeForm model model.edgeForm
-            , viewSimulationForm model model.simulationForm
-            , viewTargetNodeForm model model.targetNodeForm
+            [ class "bar-scroll col-3 text-center"
+            , style "position" "relative"
+            ]
+            [ div
+                [ style "position" "absolute"
+                , style "top" "50%"
+                , style "transform" "translate(-50%, -50%)"
+                , style "display" "inline-block"
+                ]
+                [ viewNodeForm model model.nodeForm
+                , viewEdgeForm model model.edgeForm
+                , viewSimulationForm model model.simulationForm
+                , viewTargetNodeForm model model.targetNodeForm
+                , button
+                    [ class "btn btn-sm btn-outline-success w-50 mt-5 px-1"
+                    , type_ "submit"
+                    , style "border-radius" "2rem"
+                    ]
+                    [ text "Run" ]
+                , button
+                    [ class "btn btn-sm btn-outline-danger w-50 mt-5 px-1"
+                    , type_ "submit"
+                    , style "border-radius" "2rem"
+                    ]
+                    [ text "Cancel" ]
+                ]
             ]
         , div [ class "col-6 bg-dark text-white" ]
             [ svg [ viewBox 0 0 w h ]
@@ -974,7 +997,8 @@ view model =
                         Graph.nodes (initGraph model)
                 ]
             ]
-        , div [ class "bar-scroll col-3 border-right border-info" ]
+        , div
+            [ class "shadow bar-scroll col-3 border-left border-secondary" ]
             [ viewTable "Nodes" viewNodes model.nodes
             , viewTable "Edges" viewEdges model.edges
             , viewTable "Simulation" viewSimulatedNodes model.simulatedNodes
@@ -990,19 +1014,23 @@ view model =
 viewNodeForm : Model -> NodeForm -> Html Msg
 viewNodeForm model node =
     div
-        [ class "accordion" ]
+        [ class "accordion mt-3" ]
         [ div
-            [ class "shadow card m-2 w-100 border-0"
+            [ class "shadow card border-0 text-center"
             , style "border-radius" "2rem"
-            , style "max-width" "260px"
+            , style "width" "180px"
             ]
             [ viewFormHeader "Node" DisplayNodeForm
             , form
                 [ class "collapse show"
+                , style "display" "inline-block"
                 , hidden model.nodeFormDisplay
                 , onSubmit AddNode
                 ]
-                [ div [ class "card-body p-3" ]
+                [ div
+                    [ class "card-body p-3"
+                    , style "align-items" "center"
+                    ]
                     [ viewInputNodeLabel "Label" node.label UpdateNodeLabel
                     , viewInputNumber "Tru" node.truth UpdateNodeTruth
                     , viewInputNumber "Ind" node.indeterminacy UpdateNodeIndeterminacy
@@ -1017,15 +1045,16 @@ viewNodeForm model node =
 viewEdgeForm : Model -> EdgeForm -> Html Msg
 viewEdgeForm model edge =
     div
-        [ class "accordion" ]
+        [ class "accordion mt-3" ]
         [ div
-            [ class "shadow card m-2 w-100 border-0"
+            [ class "shadow card border-0 text-center"
             , style "border-radius" "2rem"
-            , style "max-width" "260px"
+            , style "width" "180px"
             ]
             [ viewFormHeader "Edge" DisplayEdgeForm
             , form
                 [ class "collapse show"
+                , style "display" "inline-block"
                 , hidden model.edgeFormDisplay
                 , onSubmit AddEdge
                 ]
@@ -1043,17 +1072,18 @@ viewEdgeForm model edge =
 viewSimulationForm : Model -> SimulationForm -> Html Msg
 viewSimulationForm model simNode =
     div
-        [ class "accordion my-3"
+        [ class "accordion mt-3"
         , id "accordionExample"
         ]
         [ div
-            [ class "shadow card m-2 border-0"
+            [ class "shadow card border-0 text-center"
             , style "border-radius" "2rem"
-            , style "max-width" "260px"
+            , style "width" "180px"
             ]
             [ viewFormHeader "Simulate" DisplaySimForm
             , form
                 [ class "collapse show"
+                , style "display" "inline-block"
                 , hidden model.simFormDisplay
                 , onSubmit AddSimNode
                 ]
@@ -1072,17 +1102,16 @@ viewSimulationForm model simNode =
 viewTargetNodeForm : Model -> TargetNodeForm -> Html Msg
 viewTargetNodeForm model targetNode =
     div
-        [ class "accordion my-3"
-        , id "accordionExample"
-        ]
+        [ class "accordion mt-3" ]
         [ div
-            [ class "shadow card m-2 border-0"
+            [ class "shadow card border-0 text-center"
             , style "border-radius" "2rem"
-            , style "max-width" "260px"
+            , style "width" "180px"
             ]
             [ viewFormHeader "Target" DisplayTargetForm
             , form
                 [ class "collapse show"
+                , style "display" "inline-block"
                 , hidden model.targetFormDisplay
                 , onSubmit AddTargetNode
                 ]
@@ -1104,12 +1133,12 @@ viewNodes nodes =
     table
         [ class "table" ]
         (tr
-            []
-            [ th [ class "tb-header-label text-white" ] [ text "Label" ]
-            , th [ class "tb-header-label text-white" ] [ text "Tru" ]
-            , th [ class "tb-header-label text-white" ] [ text "Ind" ]
-            , th [ class "tb-header-label text-white" ] [ text "Fal" ]
-            , th [ class "tb-header-label text-white" ] [ text "" ]
+            [ class "border-bottom border-secondary" ]
+            [ th [ class "tb-header-label text-white text-left" ] [ text "Label" ]
+            , th [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
+            , th [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
+            , th [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
+            , th [ class "tb-header-label text-white text-right" ] [ text "" ]
             ]
             :: List.map viewNode nodes
         )
@@ -1118,11 +1147,11 @@ viewNodes nodes =
 viewNode : NeutroNode -> Html Msg
 viewNode node =
     tr []
-        [ td [ class "tb-header-label align-center text-white" ] [ text node.label ]
-        , td [ class "tb-header-label align-center text-white" ] [ text (String.fromFloat node.truth) ]
-        , td [ class "tb-header-label align-center text-white" ] [ text (String.fromFloat node.indeterminacy) ]
-        , td [ class "tb-header-label align-center text-white" ] [ text (String.fromFloat node.falsehood) ]
-        , td [ class "tb-header-label align-center text-white" ]
+        [ td [ class "tb-header-label align-center text-white align-middle text-left border-0" ] [ text node.label ]
+        , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.truth) ]
+        , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.indeterminacy) ]
+        , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.falsehood) ]
+        , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ]
             [ a
                 [ class "tb-header-label text-danger font-weight-bold"
                 , type_ "button"
@@ -1138,13 +1167,13 @@ viewEdges edges =
     table
         [ class "table" ]
         (tr
-            []
-            [ th [ class "tb-header-label text-white" ] [ text "From" ]
-            , th [ class "tb-header-label text-white" ] [ text "To" ]
-            , th [ class "tb-header-label text-white" ] [ text "Tru" ]
-            , th [ class "tb-header-label text-white" ] [ text "Ind" ]
-            , th [ class "tb-header-label text-white" ] [ text "Fal" ]
-            , th [ class "tb-header-label text-white" ] [ text "" ]
+            [ class "border-bottom border-secondary" ]
+            [ th [ class "tb-header-label text-white text-right text-center" ] [ text "From" ]
+            , th [ class "tb-header-label text-white text-right text-center" ] [ text "To" ]
+            , th [ class "tb-header-label text-white text-right text-right" ] [ text "Tru" ]
+            , th [ class "tb-header-label text-white text-right text-right" ] [ text "Ind" ]
+            , th [ class "tb-header-label text-white text-right text-right" ] [ text "Fal" ]
+            , th [ class "tb-header-label text-white text-right text-right" ] [ text "" ]
             ]
             :: List.map viewEdge edges
         )
@@ -1153,14 +1182,14 @@ viewEdges edges =
 viewEdge : NeutroEdge -> Html Msg
 viewEdge edge =
     tr []
-        [ td [ class "tb-header-label text-white" ] [ text (String.fromInt edge.from) ]
-        , td [ class "tb-header-label text-white" ] [ text (String.fromInt edge.to) ]
-        , td [ class "tb-header-label text-white" ] [ text (String.fromFloat edge.truth) ]
-        , td [ class "tb-header-label text-white" ] [ text (String.fromFloat edge.indeterminacy) ]
-        , td [ class "tb-header-label text-white" ] [ text (String.fromFloat edge.falsehood) ]
-        , td [ class "tb-header-label text-white" ]
+        [ td [ class "tb-header-label text-white align-middle text-center border-0" ] [ text (String.fromInt edge.from) ]
+        , td [ class "tb-header-label text-white align-middle text-center border-0" ] [ text (String.fromInt edge.to) ]
+        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat edge.truth) ]
+        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat edge.indeterminacy) ]
+        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat edge.falsehood) ]
+        , td [ class "tb-header-label text-white align-middle text-right border-0" ]
             [ button
-                [ class "btn btn text-left"
+                [ class "tb-header-label text-danger font-weight-bold"
                 , type_ "button"
                 , onClick (DeleteEdge edge.edgeId)
                 ]
@@ -1174,12 +1203,12 @@ viewSimulatedNodes simulatedNodes =
     table
         [ class "table" ]
         (tr
-            []
-            [ th [ class "tb-header-label text-white" ] [ text "Label" ]
-            , th [ class "tb-header-label text-white" ] [ text "Tru" ]
-            , th [ class "tb-header-label text-white" ] [ text "Ind" ]
-            , th [ class "tb-header-label text-white" ] [ text "Fal" ]
-            , th [ class "tb-header-label text-white" ] [ text "" ]
+            [ class "border-bottom border-secondary" ]
+            [ th [ class "tb-header-label text-white text-left" ] [ text "Label" ]
+            , th [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
+            , th [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
+            , th [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
+            , th [ class "tb-header-label text-white text-right" ] [ text "" ]
             ]
             :: List.map viewSimulatedNode simulatedNodes
         )
@@ -1188,13 +1217,13 @@ viewSimulatedNodes simulatedNodes =
 viewSimulatedNode : SimulatedNode -> Html Msg
 viewSimulatedNode simulatedNode =
     tr []
-        [ td [ class "tb-header-label text-white" ] [ text simulatedNode.simNodeLabel ]
-        , td [ class "tb-header-label text-white" ] [ text (String.fromFloat simulatedNode.simNodeTruth) ]
-        , td [ class "tb-header-label text-white" ] [ text (String.fromFloat simulatedNode.simNodeIndeterminacy) ]
-        , td [ class "tb-header-label text-white" ] [ text (String.fromFloat simulatedNode.simNodeFalsehood) ]
-        , td [ class "tb-header-label text-white" ]
+        [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text simulatedNode.simNodeLabel ]
+        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeTruth) ]
+        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeIndeterminacy) ]
+        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeFalsehood) ]
+        , td [ class "tb-header-label text-white align-middle text-right border-0" ]
             [ button
-                [ class "btn btn text-left"
+                [ class "tb-header-label text-danger font-weight-bold"
                 , type_ "button"
                 , onClick (DeleteSimNode simulatedNode.simNodeId)
                 ]
@@ -1208,9 +1237,9 @@ viewTargetNodes targetNodes =
     table
         [ class "table" ]
         (tr
-            []
-            [ th [ class "tb-header-label text-white" ] [ text "Label" ]
-            , th [ class "tb-header-label text-white" ] [ text "" ]
+            [ class "border-bottom border-secondary" ]
+            [ th [ class "tb-header-label text-white text-left" ] [ text "Label" ]
+            , th [ class "tb-header-label text-white text-right" ] [ text "" ]
             ]
             :: List.map viewTargetNode targetNodes
         )
@@ -1219,10 +1248,10 @@ viewTargetNodes targetNodes =
 viewTargetNode : TargetNode -> Html Msg
 viewTargetNode targetNode =
     tr []
-        [ td [ class "tb-header-label text-white" ] [ text targetNode.targetNodeLabel ]
-        , td [ class "tb-header-label text-white" ]
+        [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text targetNode.targetNodeLabel ]
+        , td [ class "tb-header-label text-white align-middle text-right border-0" ]
             [ button
-                [ class "btn btn text-left"
+                [ class "tb-header-label text-danger font-weight-bold"
                 , type_ "button"
                 , onClick (DeleteTargetNode targetNode.targetNodeId)
                 ]
@@ -1257,7 +1286,8 @@ viewInputNumber : String -> NeutroField -> (String -> msg) -> Html msg
 viewInputNumber p val msg =
     input
         [ type_ "number"
-        , class "w-25 mr-2"
+        , class "mx-1"
+        , style "width" "41px"
         , placeholder p
         , Html.Attributes.min "0.0"
         , Html.Attributes.max "1.0"
@@ -1273,7 +1303,8 @@ viewInputNodeLabel : String -> String -> (String -> msg) -> Html msg
 viewInputNodeLabel p val msg =
     input
         [ type_ "text"
-        , class "my-3 w-100"
+        , class "mb-3"
+        , style "width" "140px"
         , placeholder p
         , required True
         , autofocus True
@@ -1300,7 +1331,7 @@ viewInputEdgeLabel p val msg =
 viewFormButton : String -> Html msg
 viewFormButton p =
     button
-        [ class "btn btn-outline-primary w-100 my-2 my-3"
+        [ class "btn btn-sm btn-outline-primary w-100 mt-3"
         , type_ "submit"
         , style "border-radius" "2rem"
         ]
@@ -1308,23 +1339,18 @@ viewFormButton p =
 
 
 viewFormHeader : String -> Msg -> Html Msg
-viewFormHeader p msg =
+viewFormHeader title msg =
     div
-        [ class "card-header bg-primary"
-        , id "headingOne"
-        , style "display" "flex"
-        ]
-        [ h4 [ class "ml-4 pt-2 text-white" ]
-            [ text p ]
-        , button
-            [ class "btn ml-5 p-0"
+        [ class "card-header m-0 p-1 bg-primary text-center" ]
+        [ button
+            [ class "btn mt-1 p-0"
             , type_ "button"
             ]
-            [ h1
-                [ class "m-0 ml-1 text-white"
+            [ h6
+                [ class "text-white"
                 , onClick msg
                 ]
-                [ text "+" ]
+                [ text title ]
             ]
         ]
 
