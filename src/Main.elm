@@ -1,24 +1,22 @@
 port module Main exposing (..)
 
 {-
-   TODOs
-       Primary
-          - Implement Ordinary Kpi function
-          - Implement Run functionality -- Only after backend implementation
-          - Create t+1 model
-          - Validate the following rules
-              - From /= To to AddEdge
-              - From, To, SimNode and Target = list of Nodes
-       Secondary
-          - Configure Labels to show the neutro number
-          - Implement line with arrows
-          - Implement Force Directed Graph interactive graph drag and drop
-          - Tooltip - tips and explanations modals
-          - Icons for the buttons
-          - Adding DropDown menu for Edges, SimNodes, Target Nodes
-          - Change the color of the node in graph and table to ID simNode and targetNode
-
-
+      TODOs
+   Primary
+             - Implement Ordinary Kpi function
+             - Implement Run functionality -- Only after backend implementation
+             - Create t+1 model
+             - Validate the following rules
+                 - From /= To to AddEdge
+                 - From, To, SimNode and Target = list of Nodes
+          Secondary
+             - Configure Labels to show the neutro number
+             - Implement line with arrows
+             - Implement Force Directed Graph interactive graph drag and drop
+             - Tooltip - tips and explanations modals
+             - Icons for the buttons
+             - Adding DropDown menu for Edges, SimNodes, Target Nodes
+             - Change the color of the node in graph and table to ID simNode and targetNode
 -}
 
 import Browser
@@ -28,7 +26,7 @@ import Color exposing (Color)
 import Force exposing (State)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Html exposing (..)
-import Html.Attributes exposing (autofocus, class, disabled, hidden, id, placeholder, required, src, step, style, type_, value)
+import Html.Attributes exposing (class, disabled, hidden, id, placeholder, required, src, step, style, type_, value)
 import Html.Events exposing (..)
 import Html.Events.Extra.Mouse as Mouse
 import IntDict
@@ -406,7 +404,7 @@ initGraph model =
 
         forces =
             [ Force.customLinks 1 links
-            , Force.manyBodyStrength -30 <| List.map .id <| Graph.nodes graph
+            , Force.manyBodyStrength -150 <| List.map .id <| Graph.nodes graph
             , Force.center (w / 2) (h / 2)
             ]
     in
@@ -447,8 +445,8 @@ linkElement graph edge =
             retrieveEntity <| Graph.get edge.to graph
     in
     line
-        [ strokeWidth 3
-        , stroke <| Paint <| Scale.convert colorScale source.x
+        [ strokeWidth 2
+        , stroke <| Paint <| Color.rgba 255 255 255 1
         , x1 source.x
         , y1 source.y
         , x2 target.x
@@ -475,7 +473,7 @@ hexagon ( x, y ) size attrs =
 nodeSize size node =
     hexagon ( node.x, node.y )
         size
-        [ fill <| Paint <| Scale.convert colorScale node.x
+        [ fill <| Paint <| Color.rgba 255 255 255 1
         ]
         [ TypedSvg.title [] [ text node.value.name ] ]
 
@@ -1324,7 +1322,7 @@ viewNode : NeutroNode -> Html Msg
 viewNode node =
     tr []
         [ td [ class "tb-header-label align-center text-white align-middle text-left border-0" ] [ text node.label ]
-        , td [ class "tb-header-label text-white text-center border-0" ] [ text "-" ]
+        , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.truth) ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.indeterminacy) ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.falsehood) ]
@@ -1396,7 +1394,7 @@ viewSimulatedNode : SimulatedNode -> Html Msg
 viewSimulatedNode simulatedNode =
     tr []
         [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text simulatedNode.simNodeLabel ]
-        , td [ class "tb-header-label text-white text-center border-0" ] [ text "-" ]
+        , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeTruth) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeIndeterminacy) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeFalsehood) ]
@@ -1482,7 +1480,6 @@ viewInputEdgeLabel p val msg =
         , style "width" "60px"
         , placeholder p
         , required True
-        , autofocus True
         , value val
         , onInput msg
         ]
@@ -1505,8 +1502,7 @@ viewMenuButton p =
         [ class "shadow btn btn-sm btn-outline-secondary btn-circle mt-2 mx-1 px-1"
         , type_ "submit"
         , style "border-radius" "2rem"
-
-        --, disabled True
+        , disabled True
         ]
         [ text p ]
 
@@ -1553,7 +1549,7 @@ viewRow p kpi =
 viewRowFloat : String -> Float -> Html msg
 viewRowFloat p kpi =
     tr
-        [ step "0.01" ]
+        []
         [ td [ class "tb-header-label text-white align-middle text-left" ] [ text p ]
         , td [ class "tb-header-label text-white align-middle text-right pl-3" ] [ text (String.fromFloat kpi) ]
         ]
