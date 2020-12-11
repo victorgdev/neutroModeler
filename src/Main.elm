@@ -2,12 +2,23 @@ port module Main exposing (..)
 
 {-
    TODOs
-      - Implement Ordinary Kpi function
-      - Implement Run functionality -- Only after backend implementation
-      - Implement Create Label for the nodes
-      - Implement Force Directed Graph interactive graph drag and drop
-      - Tooltip - tips and explanations modals
-      - Icons for the buttons
+       Primary
+          - Implement Ordinary Kpi function
+          - Implement Run functionality -- Only after backend implementation
+          - Create t+1 model
+          - Validate the following rules
+              - From /= To to AddEdge
+              - From, To, SimNode and Target = list of Nodes
+       Secondary
+          - Configure Labels to show the neutro number
+          - Implement line with arrows
+          - Implement Force Directed Graph interactive graph drag and drop
+          - Tooltip - tips and explanations modals
+          - Icons for the buttons
+          - Adding DropDown menu for Edges, SimNodes, Target Nodes
+          - Change the color of the node in graph and table to ID simNode and targetNode
+
+
 -}
 
 import Browser
@@ -388,7 +399,7 @@ initGraph model =
                     (\{ from, to } ->
                         { source = from
                         , target = to
-                        , distance = 300
+                        , distance = 150
                         , strength = Nothing
                         }
                     )
@@ -436,7 +447,7 @@ linkElement graph edge =
             retrieveEntity <| Graph.get edge.to graph
     in
     line
-        [ strokeWidth 3.5
+        [ strokeWidth 3
         , stroke <| Paint <| Scale.convert colorScale source.x
         , x1 source.x
         , y1 source.y
@@ -471,16 +482,16 @@ nodeSize size node =
 
 nodeElement node =
     if node.label.value.rank < 5 then
-        nodeSize 16 node.label
+        nodeSize 8 node.label
 
     else if node.label.value.rank < 9 then
-        nodeSize 28 node.label
+        nodeSize 14 node.label
 
     else if modBy 2 node.label.value.rank == 0 then
         g []
-            [ nodeSize 36 node.label
+            [ nodeSize 18 node.label
             , circle
-                [ r 48
+                [ r 8
                 , cx node.label.x
                 , cy node.label.y
                 , fill PaintNone
@@ -490,7 +501,7 @@ nodeElement node =
             ]
 
     else
-        nodeSize 40 node.label
+        nodeSize 20 node.label
 
 
 neutroGraph : Model -> Graph String ()
@@ -1099,10 +1110,12 @@ view model =
                     , src "https://uploads-ssl.webflow.com/5e4e898f09bfea6abb6f44be/5e4ede46179566acc07948ca_complete.svg"
                     ]
                     []
-                , viewNodeForm model model.nodeForm
-                , viewEdgeForm model model.edgeForm
-                , viewSimulationForm model model.simulationForm
-                , viewTargetNodeForm model model.targetNodeForm
+                , div [ class "d-inline-block" ]
+                    [ viewNodeForm model model.nodeForm
+                    , viewEdgeForm model model.edgeForm
+                    , viewSimulationForm model model.simulationForm
+                    , viewTargetNodeForm model model.targetNodeForm
+                    ]
                 , button
                     [ class "shadow btn btn-sm btn-outline-success w-100 mt-5 px-1"
                     , type_ "submit"
@@ -1136,7 +1149,7 @@ view model =
                 ]
             ]
         , div
-            [ class "shadow overflow-hidden bar-scroll col-3" ]
+            [ class "shadow bar-scroll col-3" ]
             [ div [ class "m-0 w-100" ]
                 [ div
                     [ class "bg-dark w-100 mt-2" ]
@@ -1311,7 +1324,7 @@ viewNode : NeutroNode -> Html Msg
 viewNode node =
     tr []
         [ td [ class "tb-header-label align-center text-white align-middle text-left border-0" ] [ text node.label ]
-        , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
+        , td [ class "tb-header-label text-white text-center border-0" ] [ text "-" ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.truth) ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.indeterminacy) ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.falsehood) ]
@@ -1383,7 +1396,7 @@ viewSimulatedNode : SimulatedNode -> Html Msg
 viewSimulatedNode simulatedNode =
     tr []
         [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text simulatedNode.simNodeLabel ]
-        , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
+        , td [ class "tb-header-label text-white text-center border-0" ] [ text "-" ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeTruth) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeIndeterminacy) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeFalsehood) ]
@@ -1455,7 +1468,6 @@ viewInputNodeLabel p val msg =
         , style "width" "140px"
         , placeholder p
         , required True
-        , autofocus True
         , value val
         , onInput msg
         ]
@@ -1493,7 +1505,8 @@ viewMenuButton p =
         [ class "shadow btn btn-sm btn-outline-secondary btn-circle mt-2 mx-1 px-1"
         , type_ "submit"
         , style "border-radius" "2rem"
-        , disabled True
+
+        --, disabled True
         ]
         [ text p ]
 
@@ -1540,7 +1553,7 @@ viewRow p kpi =
 viewRowFloat : String -> Float -> Html msg
 viewRowFloat p kpi =
     tr
-        []
+        [ step "0.01" ]
         [ td [ class "tb-header-label text-white align-middle text-left" ] [ text p ]
         , td [ class "tb-header-label text-white align-middle text-right pl-3" ] [ text (String.fromFloat kpi) ]
         ]
