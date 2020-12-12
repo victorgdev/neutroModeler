@@ -6,9 +6,7 @@ port module Main exposing (..)
              - Implement Ordinary Kpi function
              - Implement Run functionality -- Only after backend implementation
              - Create t+1 model
-             - Validate the following rules
-                 - From /= To to AddEdge
-                 - From, To, SimNode and Target = list of Nodes
+             - Validate the following rules From /= To to AddEdge
           Secondary
              - Configure Labels to show the neutro number
              - Implement line with arrows
@@ -94,6 +92,9 @@ type alias Model =
     , targetFormDisplay : Bool
 
     -- KPIs
+    , listTransmitters : List Int
+    , listReceivers : List Int
+    , listOrdinaries : List Int
     , numConcepts : Int -- number of nodes
     , numConnections : Int -- number of edges
     , numTransmitters : Int -- number of nodes that transmit impact (edges)
@@ -154,12 +155,8 @@ type alias TargetNode =
 -- FORMS
 
 
-type From
-    = From (Maybe Int) String
-
-
-type To
-    = To (Maybe Int) String
+type Nid
+    = Nid (Maybe Int) String
 
 
 type NeutroField
@@ -178,8 +175,8 @@ type alias NodeForm =
 
 type alias EdgeForm =
     { edgeId : Int
-    , from : From
-    , to : To
+    , from : Nid
+    , to : Nid
     , truth : NeutroField
     , indeterminacy : NeutroField
     , falsehood : NeutroField
@@ -248,8 +245,8 @@ displayNodeForm =
 hideEdgeForm : EdgeForm
 hideEdgeForm =
     { edgeId = 0
-    , from = From Nothing ""
-    , to = To Nothing ""
+    , from = Nid Nothing ""
+    , to = Nid Nothing ""
     , truth = NeutroField Nothing ""
     , indeterminacy = NeutroField Nothing ""
     , falsehood = NeutroField Nothing ""
@@ -260,8 +257,8 @@ hideEdgeForm =
 displayEdgeForm : EdgeForm
 displayEdgeForm =
     { edgeId = 0
-    , from = From Nothing ""
-    , to = To Nothing ""
+    , from = Nid Nothing ""
+    , to = Nid Nothing ""
     , truth = NeutroField Nothing ""
     , indeterminacy = NeutroField Nothing ""
     , falsehood = NeutroField Nothing ""
@@ -332,6 +329,9 @@ initModel =
     , targetFormDisplay = True
 
     -- KPIs
+    , listTransmitters = []
+    , listReceivers = []
+    , listOrdinaries = []
     , numConcepts = 0
     , numConnections = 0
     , numTransmitters = 0
@@ -361,7 +361,7 @@ w =
 
 h : Float
 h =
-    504
+    800
 
 
 colorScale : SequentialScale Color
@@ -404,7 +404,7 @@ initGraph model =
 
         forces =
             [ Force.customLinks 1 links
-            , Force.manyBodyStrength -150 <| List.map .id <| Graph.nodes graph
+            , Force.manyBodyStrength 150 <| List.map .id <| Graph.nodes graph
             , Force.center (w / 2) (h / 2)
             ]
     in
@@ -458,10 +458,10 @@ linkElement graph edge =
 hexagon ( x, y ) size attrs =
     let
         angle =
-            2 * pi / 6
+            2 * pi / 360
 
         p =
-            range 0 6
+            range 0 360
                 |> List.map toFloat
                 |> List.map (\a -> ( x + cos (a * angle) * 2 * size, y + sin (a * angle) * 2 * size ))
                 |> points
@@ -581,7 +581,7 @@ update msg model =
                 | nodeForm = newForm
                 , nodes =
                     model.nodes ++ [ newNode ]
-                , numConcepts = model.numConcepts + 1
+                , numConcepts = List.length model.nodes
                 , cnScore =
                     if isNaN (toFloat model.numConnections / toFloat model.numConcepts) == True then
                         0.0
@@ -608,8 +608,8 @@ update msg model =
             let
                 newEdge =
                     { edgeId = model.edgeForm.edgeId + 1
-                    , from = model.edgeForm.from |> edgeOriginToString |> String.toInt |> Maybe.withDefault 0
-                    , to = model.edgeForm.to |> edgeDestinyToString |> String.toInt |> Maybe.withDefault 0
+                    , from = model.edgeForm.from |> nidToString |> String.toInt |> Maybe.withDefault 0
+                    , to = model.edgeForm.to |> nidToString |> String.toInt |> Maybe.withDefault 0
                     , truth = model.edgeForm.truth |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
                     , indeterminacy = model.edgeForm.indeterminacy |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
                     , falsehood = model.edgeForm.falsehood |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
@@ -617,14 +617,41 @@ update msg model =
 
                 newEdgeForm =
                     { hideEdgeForm | edgeId = 0 }
+
+                newTransmitter =
+                    model.edgeForm.from |> nidToString |> String.toInt |> Maybe.withDefault 0
+
+                newReceiver =
+                    model.edgeForm.to |> nidToString |> String.toInt |> Maybe.withDefault 0
+
+                newOrdinaryFromFrom =
+                    List.member newTransmitter model.listReceivers
+
+                newOrdinaryFromTo =
+                    List.member newReceiver model.listTransmitters
             in
             ( { model
                 | edgeForm = newEdgeForm
-                , edges =
-                    model.edges ++ [ newEdge ]
-                , numConnections = model.numConnections + 1
-                , numTransmitters = model.numTransmitters + 1
-                , numReceivers = model.numReceivers + 1
+                , edges = model.edges ++ [ newEdge ]
+                , listTransmitters = newTransmitter :: model.listTransmitters
+                , listReceivers = newReceiver :: model.listReceivers
+
+                --, listOrdinaries =
+                --    if newOrdinaryFromFrom == True && newOrdinaryFromTo == True then
+                --       newTransmitter newReceiver :: model.listOrdinaries
+                --
+                --    else if newOrdinaryFromFrom == True && newOrdinaryFromTo == False then
+                --        model.listOrdinaries ++ [ newTransmitter ]
+                --
+                --    else if newOrdinaryFromFrom == False && newOrdinaryFromTo == True then
+                --        newReceiver :: model.listOrdinaries
+                --
+                --    else
+                --        model.listOrdinaries
+                , numConnections = List.length model.edges
+                , numTransmitters = List.length model.listTransmitters
+                , numReceivers = List.length model.listReceivers
+                , numOrdinary = List.length model.listOrdinaries
                 , cnScore =
                     if isNaN (toFloat model.numConnections / toFloat model.numConcepts) == True then
                         0.0
@@ -798,7 +825,7 @@ update msg model =
 
                 newEdgeForm =
                     if String.all Char.isDigit newFrom == True then
-                        { oldEdgeForm | from = From Nothing newFrom }
+                        { oldEdgeForm | from = Nid Nothing newFrom }
 
                     else
                         let
@@ -807,12 +834,16 @@ update msg model =
                         in
                         case maybeFrom of
                             Nothing ->
-                                { oldEdgeForm | from = From Nothing newFrom }
+                                { oldEdgeForm | from = Nid Nothing newFrom }
 
                             Just t ->
-                                { oldEdgeForm | from = From (Just t) newFrom }
+                                { oldEdgeForm | from = Nid (Just t) newFrom }
             in
-            ( { model | edgeForm = newEdgeForm }, Cmd.none )
+            ( { model
+                | edgeForm = newEdgeForm
+              }
+            , Cmd.none
+            )
 
         UpdateEdgeTo newTo ->
             let
@@ -821,7 +852,7 @@ update msg model =
 
                 newEdgeForm =
                     if String.all Char.isDigit newTo == True then
-                        { oldEdgeForm | to = To Nothing newTo }
+                        { oldEdgeForm | to = Nid Nothing newTo }
 
                     else
                         let
@@ -830,10 +861,10 @@ update msg model =
                         in
                         case maybeTo of
                             Nothing ->
-                                { oldEdgeForm | to = To Nothing newTo }
+                                { oldEdgeForm | to = Nid Nothing newTo }
 
                             Just t ->
-                                { oldEdgeForm | to = To (Just t) newTo }
+                                { oldEdgeForm | to = Nid (Just t) newTo }
             in
             ( { model | edgeForm = newEdgeForm }, Cmd.none )
 
@@ -1038,10 +1069,6 @@ update msg model =
             )
 
         DisplaySimForm ->
-            let
-                nodeDisplay =
-                    model.nodeFormDisplay
-            in
             ( { model
                 | simFormDisplay =
                     if model.simFormDisplay == True then
@@ -1137,7 +1164,8 @@ view model =
             ]
         , div
             [ class "col-6 bg-dark text-white" ]
-            [ svg [ viewBox 0 0 w h ]
+            [ svg
+                [ viewBox 0 0 w h ]
                 [ g [ TypedSvg.Attributes.class [ "links" ] ] <|
                     List.map (linkElement (initGraph model)) <|
                         Graph.edges (initGraph model)
@@ -1199,7 +1227,7 @@ viewNodeForm model node =
                     [ class "card-body p-3"
                     , style "align-items" "center"
                     ]
-                    [ viewInputNodeLabel "Label" node.label UpdateNodeLabel
+                    [ viewInputNodeLabel "140px" "mb-3" "Label" node.label UpdateNodeLabel
                     , viewInputNumber "Tru" node.truth UpdateNodeTruth
                     , viewInputNumber "Ind" node.indeterminacy UpdateNodeIndeterminacy
                     , viewInputNumber "Fal" node.falsehood UpdateNodeFalsehood
@@ -1230,12 +1258,12 @@ viewEdgeForm model edge =
                     [ class "card-body p-3"
                     , style "align-items" "center"
                     ]
-                    [ viewInputEdgeLabel "From" (edgeOriginToString edge.from) UpdateEdgeFrom
-                    , viewInputEdgeLabel "To" (edgeDestinyToString edge.to) UpdateEdgeTo
+                    [ viewInputNodeLabel "60px" "mb-3 mx-1" "From" (nidToString edge.from) UpdateEdgeFrom
+                    , viewInputNodeLabel "60px" "mb-3 mx-1" "To" (nidToString edge.to) UpdateEdgeTo
                     , viewInputNumber "Tru" edge.truth UpdateEdgeTruth
                     , viewInputNumber "Ind" edge.indeterminacy UpdateEdgeIndeterminacy
                     , viewInputNumber "Fal" edge.falsehood UpdateEdgeFalsehood
-                    , viewFormButton "Add Edge"
+                    , viewFormButtonEdge "Add Edge"
                     ]
                 ]
             ]
@@ -1261,7 +1289,7 @@ viewSimulationForm model simNode =
                 , onSubmit AddSimNode
                 ]
                 [ div [ class "card-body p-3" ]
-                    [ viewInputNodeLabel "Label" simNode.simNodeLabel UpdateSimNodeLabel
+                    [ viewNodesList "Label" "mb-3" "140px" UpdateSimNodeLabel simNode.simNodeLabel model.nodes
                     , viewInputNumber "Tru" simNode.simNodeTruth UpdateSimNodeTruth
                     , viewInputNumber "Ind" simNode.simNodeIndeterminacy UpdateSimNodeIndeterminacy
                     , viewInputNumber "Fal" simNode.simNodeFalsehood UpdateSimNodeFalsehood
@@ -1289,7 +1317,7 @@ viewTargetNodeForm model targetNode =
                 , onSubmit AddTargetNode
                 ]
                 [ div [ class "card-body p-3" ]
-                    [ viewInputNodeLabel "Label" targetNode.targetNodeLabel UpdateTargetNodeLabel
+                    [ viewNodesList "Label" "mb-3" "140px" UpdateTargetNodeLabel targetNode.targetNodeLabel model.nodes
                     , viewFormButton "Add Target"
                     ]
                 ]
@@ -1458,12 +1486,12 @@ viewInputNumber p val msg =
         []
 
 
-viewInputNodeLabel : String -> String -> (String -> msg) -> Html msg
-viewInputNodeLabel p val msg =
+viewInputNodeLabel : String -> String -> String -> String -> (String -> msg) -> Html msg
+viewInputNodeLabel size c p val msg =
     input
         [ type_ "text"
-        , class "mb-3"
-        , style "width" "140px"
+        , class c
+        , style "width" size
         , placeholder p
         , required True
         , value val
@@ -1472,18 +1500,39 @@ viewInputNodeLabel p val msg =
         []
 
 
-viewInputEdgeLabel : String -> String -> (String -> msg) -> Html msg
-viewInputEdgeLabel p val msg =
-    input
-        [ type_ "text"
-        , class "mb-3 mx-1"
-        , style "width" "60px"
+
+--viewNodesList : List NeutroNode -> Html Msg
+
+
+viewNodesList p c size msg label nodes =
+    select
+        [ onInput msg
+        , class c
+        , style "width" size
         , placeholder p
         , required True
-        , value val
-        , onInput msg
+        , value label
         ]
-        []
+        (option
+            [ class "tb-header-label text-left" ]
+            []
+            :: List.map viewNodeOpt nodes
+        )
+
+
+viewNodeOpt : NeutroNode -> Html Msg
+viewNodeOpt node =
+    option [ class "tb-header-label" ] [ text node.label ]
+
+
+viewFormButtonEdge : String -> Html msg
+viewFormButtonEdge p =
+    button
+        [ class "btn btn-sm btn-outline-primary w-100 mt-3"
+        , type_ "submit"
+        , style "border-radius" "2rem"
+        ]
+        [ text p ]
 
 
 viewFormButton : String -> Html msg
@@ -1569,21 +1618,11 @@ neutroFieldToString neutroField =
             neutro
 
 
-edgeDestinyToString : To -> String
-edgeDestinyToString to =
-    case to of
-        To Nothing destiny ->
-            destiny
+nidToString : Nid -> String
+nidToString nid =
+    case nid of
+        Nid Nothing n ->
+            n
 
-        To (Just _) destiny ->
-            destiny
-
-
-edgeOriginToString : From -> String
-edgeOriginToString from =
-    case from of
-        From Nothing origin ->
-            origin
-
-        From (Just _) origin ->
-            origin
+        Nid (Just _) n ->
+            n
