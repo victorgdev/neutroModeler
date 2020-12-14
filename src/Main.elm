@@ -6,7 +6,9 @@ port module Main exposing (..)
              - Implement Ordinary Kpi function
              - Implement Run functionality -- Only after backend implementation
              - Create t+1 model
-             - Validate the following rules From /= To to AddEdge
+             - Validate the following rules
+                - From /= To to AddEdge
+                - Existing edges
           Secondary
              - Configure Labels to show the neutro number
              - Implement line with arrows
@@ -80,6 +82,7 @@ type alias Model =
     , edges : List NeutroEdge
     , simulatedNodes : List SimulatedNode
     , targetNodes : List TargetNode
+    , nodeInfo : List NodeInfo
 
     -- Forms
     , nodeForm : NodeForm
@@ -130,6 +133,12 @@ type alias NeutroEdge =
     , truth : Float
     , indeterminacy : Float
     , falsehood : Float
+    }
+
+
+type alias NodeInfo =
+    { nodeIndex : Int
+    , nodeLabel : String
     }
 
 
@@ -317,6 +326,7 @@ initModel =
     , edges = []
     , simulatedNodes = []
     , targetNodes = []
+    , nodeInfo = []
 
     -- Forms
     , nodeForm = hideNodeForm
@@ -560,6 +570,28 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        newCnScore =
+            if isNaN (toFloat model.numConnections / toFloat model.numConcepts) == True then
+                0.0
+
+            else
+                toFloat model.numConnections / toFloat model.numConcepts
+
+        newComplexityScore =
+            if isNaN (toFloat model.numTransmitters / toFloat model.numReceivers) == True then
+                0.0
+
+            else
+                toFloat model.numTransmitters / toFloat model.numReceivers
+
+        newDensityScore =
+            if isNaN (toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)) == True then
+                0.0
+
+            else
+                toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)
+    in
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -567,39 +599,49 @@ update msg model =
         AddNode ->
             let
                 newNode =
-                    { nodeId = model.nodeForm.nodeId + 1
-                    , label = model.nodeForm.label
-                    , truth = model.nodeForm.truth |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
-                    , indeterminacy = model.nodeForm.indeterminacy |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
-                    , falsehood = model.nodeForm.falsehood |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    let
+                        newNodeId =
+                            model.nodeForm.nodeId + 1
+
+                        newNodeLabel =
+                            model.nodeForm.label
+
+                        newTruth =
+                            model.nodeForm.truth
+                                |> neutroFieldToString
+                                |> String.toFloat
+                                |> Maybe.withDefault 0.0
+
+                        newIndeterminacy =
+                            model.nodeForm.indeterminacy
+                                |> neutroFieldToString
+                                |> String.toFloat
+                                |> Maybe.withDefault 0.0
+
+                        newFalsehood =
+                            model.nodeForm.falsehood
+                                |> neutroFieldToString
+                                |> String.toFloat
+                                |> Maybe.withDefault 0.0
+                    in
+                    { nodeId = newNodeId
+                    , label = newNodeLabel
+                    , truth = newTruth
+                    , indeterminacy = newIndeterminacy
+                    , falsehood = newFalsehood
                     }
 
                 newForm =
-                    { hideNodeForm | nodeId = 0 }
+                    hideNodeForm
             in
             ( { model
                 | nodeForm = newForm
                 , nodes =
                     model.nodes ++ [ newNode ]
-                , numConcepts = List.length model.nodes
-                , cnScore =
-                    if isNaN (toFloat model.numConnections / toFloat model.numConcepts) == True then
-                        0.0
-
-                    else
-                        toFloat model.numConnections / toFloat model.numConcepts
-                , complexityScore =
-                    if isNaN (toFloat model.numTransmitters / toFloat model.numReceivers) == True then
-                        0.0
-
-                    else
-                        toFloat model.numTransmitters / toFloat model.numReceivers
-                , densityScore =
-                    if isNaN (toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)) == True then
-                        0.0
-
-                    else
-                        toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)
+                , numConcepts = List.length model.nodes + 1
+                , cnScore = newCnScore
+                , complexityScore = newComplexityScore
+                , densityScore = newDensityScore
               }
             , Cmd.none
             )
@@ -607,69 +649,113 @@ update msg model =
         AddEdge ->
             let
                 newEdge =
-                    { edgeId = model.edgeForm.edgeId + 1
-                    , from = model.edgeForm.from |> nidToString |> String.toInt |> Maybe.withDefault 0
-                    , to = model.edgeForm.to |> nidToString |> String.toInt |> Maybe.withDefault 0
-                    , truth = model.edgeForm.truth |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
-                    , indeterminacy = model.edgeForm.indeterminacy |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
-                    , falsehood = model.edgeForm.falsehood |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    let
+                        newEdgeId =
+                            model.edgeForm.edgeId + 1
+
+                        newFrom =
+                            model.edgeForm.from
+                                |> nidToString
+                                |> String.toInt
+                                |> Maybe.withDefault 0
+
+                        newTo =
+                            model.edgeForm.to
+                                |> nidToString
+                                |> String.toInt
+                                |> Maybe.withDefault 0
+
+                        newTruth =
+                            model.edgeForm.truth
+                                |> neutroFieldToString
+                                |> String.toFloat
+                                |> Maybe.withDefault 0.0
+
+                        newIndeterminacy =
+                            model.edgeForm.indeterminacy
+                                |> neutroFieldToString
+                                |> String.toFloat
+                                |> Maybe.withDefault 0.0
+
+                        newFalsehood =
+                            model.edgeForm.falsehood
+                                |> neutroFieldToString
+                                |> String.toFloat
+                                |> Maybe.withDefault 0.0
+                    in
+                    { edgeId = newEdgeId
+                    , from = newFrom
+                    , to = newTo
+                    , truth = newTruth
+                    , indeterminacy = newIndeterminacy
+                    , falsehood = newFalsehood
                     }
 
                 newEdgeForm =
-                    { hideEdgeForm | edgeId = 0 }
+                    hideEdgeForm
 
                 newTransmitter =
-                    model.edgeForm.from |> nidToString |> String.toInt |> Maybe.withDefault 0
+                    model.edgeForm.from
+                        |> nidToString
+                        |> String.toInt
+                        |> Maybe.withDefault 0
 
                 newReceiver =
-                    model.edgeForm.to |> nidToString |> String.toInt |> Maybe.withDefault 0
+                    model.edgeForm.to
+                        |> nidToString
+                        |> String.toInt
+                        |> Maybe.withDefault 0
+
+                newListTransmitters =
+                    newTransmitter :: model.listTransmitters
+
+                newListReceivers =
+                    newReceiver :: model.listReceivers
 
                 newOrdinaryFromFrom =
                     List.member newTransmitter model.listReceivers
 
                 newOrdinaryFromTo =
                     List.member newReceiver model.listTransmitters
+
+                newListOrdinaries =
+                    if newOrdinaryFromFrom == True && newOrdinaryFromTo == True then
+                        model.listOrdinaries
+
+                    else if newOrdinaryFromFrom == True && newOrdinaryFromTo == False then
+                        newReceiver :: model.listOrdinaries
+
+                    else if newOrdinaryFromFrom == False && newOrdinaryFromTo == True then
+                        newTransmitter :: model.listOrdinaries
+
+                    else
+                        List.append [ newTransmitter, newReceiver ] model.listOrdinaries
+
+                newNumOrdinary =
+                    List.length model.listOrdinaries
+
+                newNumConnections =
+                    List.length model.edges + 1
+
+                newNumTransmitters =
+                    List.length model.listTransmitters + 1
+
+                newNumReceivers =
+                    List.length model.listReceivers + 1
             in
             ( { model
                 | edgeForm = newEdgeForm
                 , edges = model.edges ++ [ newEdge ]
-                , listTransmitters = newTransmitter :: model.listTransmitters
-                , listReceivers = newReceiver :: model.listReceivers
-
-                --, listOrdinaries =
-                --    if newOrdinaryFromFrom == True && newOrdinaryFromTo == True then
-                --       newTransmitter newReceiver :: model.listOrdinaries
-                --
-                --    else if newOrdinaryFromFrom == True && newOrdinaryFromTo == False then
-                --        model.listOrdinaries ++ [ newTransmitter ]
-                --
-                --    else if newOrdinaryFromFrom == False && newOrdinaryFromTo == True then
-                --        newReceiver :: model.listOrdinaries
-                --
-                --    else
-                --        model.listOrdinaries
-                , numConnections = List.length model.edges
-                , numTransmitters = List.length model.listTransmitters
-                , numReceivers = List.length model.listReceivers
-                , numOrdinary = List.length model.listOrdinaries
-                , cnScore =
-                    if isNaN (toFloat model.numConnections / toFloat model.numConcepts) == True then
-                        0.0
-
-                    else
-                        toFloat model.numConnections / toFloat model.numConcepts
-                , complexityScore =
-                    if isNaN (toFloat model.numTransmitters / toFloat model.numReceivers) == True then
-                        0.0
-
-                    else
-                        toFloat model.numTransmitters / toFloat model.numReceivers
-                , densityScore =
-                    if isNaN (toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)) == True then
-                        0.0
-
-                    else
-                        toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)
+                , listTransmitters = newListTransmitters
+                , listReceivers = newListReceivers
+                , listOrdinaries = newListOrdinaries
+                , numConnections = newNumConnections
+                , numTransmitters = newNumTransmitters
+                , numReceivers = newNumReceivers
+                , numOrdinary = newNumOrdinary
+                , cnScore = newCnScore
+                , complexityScore = newComplexityScore
+                , densityScore = newDensityScore
               }
             , Cmd.none
             )
@@ -679,13 +765,25 @@ update msg model =
                 newSimulationNode =
                     { simNodeId = model.simulationForm.simNodeId + 1
                     , simNodeLabel = model.simulationForm.simNodeLabel
-                    , simNodeTruth = model.simulationForm.simNodeTruth |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
-                    , simNodeIndeterminacy = model.simulationForm.simNodeIndeterminacy |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
-                    , simNodeFalsehood = model.simulationForm.simNodeFalsehood |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    , simNodeTruth =
+                        model.simulationForm.simNodeTruth
+                            |> neutroFieldToString
+                            |> String.toFloat
+                            |> Maybe.withDefault 0.0
+                    , simNodeIndeterminacy =
+                        model.simulationForm.simNodeIndeterminacy
+                            |> neutroFieldToString
+                            |> String.toFloat
+                            |> Maybe.withDefault 0.0
+                    , simNodeFalsehood =
+                        model.simulationForm.simNodeFalsehood
+                            |> neutroFieldToString
+                            |> String.toFloat
+                            |> Maybe.withDefault 0.0
                     }
 
                 newSimulationForm =
-                    { hideSimulationForm | simNodeId = 0 }
+                    hideSimulationForm
             in
             ( { model
                 | simulationForm = newSimulationForm
@@ -700,13 +798,25 @@ update msg model =
                 newTargetNode =
                     { targetNodeId = model.targetNodeForm.targetNodeId + 1
                     , targetNodeLabel = model.targetNodeForm.targetNodeLabel
-                    , targetNodeTruth = model.targetNodeForm.targetNodeTruth |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
-                    , targetNodeIndeterminacy = model.targetNodeForm.targetNodeIndeterminacy |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
-                    , targetNodeFalsehood = model.targetNodeForm.targetNodeFalsehood |> neutroFieldToString |> String.toFloat |> Maybe.withDefault 0.0
+                    , targetNodeTruth =
+                        model.targetNodeForm.targetNodeTruth
+                            |> neutroFieldToString
+                            |> String.toFloat
+                            |> Maybe.withDefault 0.0
+                    , targetNodeIndeterminacy =
+                        model.targetNodeForm.targetNodeIndeterminacy
+                            |> neutroFieldToString
+                            |> String.toFloat
+                            |> Maybe.withDefault 0.0
+                    , targetNodeFalsehood =
+                        model.targetNodeForm.targetNodeFalsehood
+                            |> neutroFieldToString
+                            |> String.toFloat
+                            |> Maybe.withDefault 0.0
                     }
 
                 newTargetNodeForm =
-                    { hideTargetNodeForm | targetNodeId = 0 }
+                    hideTargetNodeForm
             in
             ( { model
                 | targetNodeForm = newTargetNodeForm
@@ -741,22 +851,22 @@ update msg model =
 
         UpdateNodeLabel newLabel ->
             let
-                oldForm =
+                oldNodeForm =
                     model.nodeForm
 
-                newForm =
-                    { oldForm | label = newLabel }
+                newNodeForm =
+                    { oldNodeForm | label = newLabel }
             in
-            ( { model | nodeForm = newForm }, Cmd.none )
+            ( { model | nodeForm = newNodeForm }, Cmd.none )
 
         UpdateNodeTruth newTruth ->
             let
-                oldForm =
+                oldNodeForm =
                     model.nodeForm
 
-                newForm =
+                newNodeForm =
                     if String.right 1 newTruth == "." then
-                        { oldForm | truth = NeutroField Nothing newTruth }
+                        { oldNodeForm | truth = NeutroField Nothing newTruth }
 
                     else
                         let
@@ -765,21 +875,21 @@ update msg model =
                         in
                         case maybeTruth of
                             Nothing ->
-                                { oldForm | truth = NeutroField Nothing newTruth }
+                                { oldNodeForm | truth = NeutroField Nothing newTruth }
 
                             Just t ->
-                                { oldForm | truth = NeutroField (Just t) newTruth }
+                                { oldNodeForm | truth = NeutroField (Just t) newTruth }
             in
-            ( { model | nodeForm = newForm }, Cmd.none )
+            ( { model | nodeForm = newNodeForm }, Cmd.none )
 
         UpdateNodeIndeterminacy newIndeterminacy ->
             let
-                oldForm =
+                oldNodeForm =
                     model.nodeForm
 
-                newForm =
+                newNodeForm =
                     if String.right 1 newIndeterminacy == "." then
-                        { oldForm | indeterminacy = NeutroField Nothing newIndeterminacy }
+                        { oldNodeForm | indeterminacy = NeutroField Nothing newIndeterminacy }
 
                     else
                         let
@@ -788,21 +898,21 @@ update msg model =
                         in
                         case maybeIndeterminacy of
                             Nothing ->
-                                { oldForm | indeterminacy = NeutroField Nothing newIndeterminacy }
+                                { oldNodeForm | indeterminacy = NeutroField Nothing newIndeterminacy }
 
                             Just p ->
-                                { oldForm | indeterminacy = NeutroField (Just p) newIndeterminacy }
+                                { oldNodeForm | indeterminacy = NeutroField (Just p) newIndeterminacy }
             in
-            ( { model | nodeForm = newForm }, Cmd.none )
+            ( { model | nodeForm = newNodeForm }, Cmd.none )
 
         UpdateNodeFalsehood newFalsehood ->
             let
-                oldForm =
+                oldNodeForm =
                     model.nodeForm
 
-                newForm =
+                newNodeForm =
                     if String.right 1 newFalsehood == "." then
-                        { oldForm | falsehood = NeutroField Nothing newFalsehood }
+                        { oldNodeForm | falsehood = NeutroField Nothing newFalsehood }
 
                     else
                         let
@@ -811,12 +921,12 @@ update msg model =
                         in
                         case maybeFalsehood of
                             Nothing ->
-                                { oldForm | falsehood = NeutroField Nothing newFalsehood }
+                                { oldNodeForm | falsehood = NeutroField Nothing newFalsehood }
 
                             Just p ->
-                                { oldForm | falsehood = NeutroField (Just p) newFalsehood }
+                                { oldNodeForm | falsehood = NeutroField (Just p) newFalsehood }
             in
-            ( { model | nodeForm = newForm }, Cmd.none )
+            ( { model | nodeForm = newNodeForm }, Cmd.none )
 
         UpdateEdgeFrom newFrom ->
             let
@@ -839,11 +949,7 @@ update msg model =
                             Just t ->
                                 { oldEdgeForm | from = Nid (Just t) newFrom }
             in
-            ( { model
-                | edgeForm = newEdgeForm
-              }
-            , Cmd.none
-            )
+            ( { model | edgeForm = newEdgeForm }, Cmd.none )
 
         UpdateEdgeTo newTo ->
             let
@@ -1118,86 +1224,96 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div
-        [ class "app bg-dark" ]
+        [ class "container-fluid app bg-dark m-0 p-0" ]
+        [ viewLeftMenuBar model
+        , viewGraphCanvas model
+        , viewRightMenuBar model
+        ]
+
+
+viewLeftMenuBar : Model -> Html Msg
+viewLeftMenuBar model =
+    div
+        [ class "col-3 text-center m-0 p-0"
+        , style "height" "100vh"
+        ]
         [ div
-            [ class "overflow-hidden col-3 m-0 p-0 text-center"
-            , style "position" "relative"
+            [ class "d-flex"
             ]
             [ div
-                [ class "d-inline-block mx-3"
-                , style "position" "absolute"
-                , style "top" "50%"
-                , style "transform" "translate(-75%, -50%)"
+                [ class "shadow d-inline-block"
+                , style "max-width" "80px"
+                , style "height" "100vh"
                 ]
-                [ img
-                    [ class "mb-5"
-                    , style "width" "180px"
-                    , src "https://uploads-ssl.webflow.com/5e4e898f09bfea6abb6f44be/5e4ede46179566acc07948ca_complete.svg"
-                    ]
-                    []
-                , div [ class "d-inline-block" ]
-                    [ viewNodeForm model model.nodeForm
-                    , viewEdgeForm model model.edgeForm
-                    , viewSimulationForm model model.simulationForm
-                    , viewTargetNodeForm model model.targetNodeForm
-                    ]
-                , button
-                    [ class "shadow btn btn-sm btn-outline-success w-100 mt-5 px-1"
-                    , type_ "submit"
-                    , style "border-radius" "2rem"
-                    , onClick DeleteModel
-                    ]
-                    [ text "Run Model" ]
-                , button
-                    [ class "shadow btn btn-sm btn-outline-danger w-100 my-2 px-1"
-                    , type_ "submit"
-                    , style "border-radius" "2rem"
-                    , onClick DeleteModel
-                    ]
-                    [ text "Delete Model" ]
-                , viewMenuButton "Save"
-                , viewMenuButton "Open"
-                , viewMenuButton "Import"
-                , viewMenuButton "Export"
-                , viewMenuButton "Logout"
-                ]
-            ]
-        , div
-            [ class "col-6 bg-dark text-white" ]
-            [ svg
-                [ viewBox 0 0 w h ]
-                [ g [ TypedSvg.Attributes.class [ "links" ] ] <|
-                    List.map (linkElement (initGraph model)) <|
-                        Graph.edges (initGraph model)
-                , g [ TypedSvg.Attributes.class [ "nodes" ] ] <|
-                    List.map nodeElement <|
-                        Graph.nodes (initGraph model)
-                ]
-            ]
-        , div
-            [ class "shadow bar-scroll col-3" ]
-            [ div [ class "m-0 w-100" ]
                 [ div
-                    [ class "bg-dark w-100 mt-2" ]
-                    [ p
-                        [ class "p-1 m-0 text-primary border-bottom border-white" ]
-                        [ text "Model KPIs" ]
-                    , table
-                        [ class "my-3" ]
-                        [ viewRow "# Nodes:" model.numConcepts
-                        , viewRow "# Edges:" model.numConnections
-                        , viewRow "# Transmitters:" model.numTransmitters
-                        , viewRow "# Receivers:" model.numReceivers
-                        , viewRow "# Ordinary:" model.numOrdinary
-                        , viewRowFloat "C/N Score:" model.cnScore
-                        , viewRowFloat "Complexity" model.complexityScore
-                        , viewRowFloat "Density" model.densityScore
-                        ]
-                    , viewTable "Nodes" viewNodes model.nodes
-                    , viewTable "Edges" viewEdges model.edges
-                    , viewTable "Simulation" viewSimulatedNodes model.simulatedNodes
-                    , viewTable "Target" viewTargetNodes model.targetNodes
+                    [ class "w-full m-0 p-auto"
                     ]
+                    [ viewMenuButton "Save"
+                    , viewMenuButton "Open"
+                    , viewMenuButton "Import"
+                    , viewMenuButton "Export"
+                    , viewMenuButton "Logout"
+                    ]
+                ]
+            , div
+                [ class "container-fluid m-0 p-0 d-inline-block"
+                , style "height" "100vh"
+                ]
+                [ viewNodeInputForm model model.nodeForm
+                , viewEdgeInputForm model model.edgeForm
+                , viewSimulationInputForm model model.simulationForm
+                , viewTargetNodeForm model model.targetNodeForm
+                , div
+                    [ class "container-fluid m-0 p-0 d-inline-block w-50 mx-auto mt-5" ]
+                    [ viewControlButton "Run Model" "btn-outline-success" DeleteModel
+                    , viewControlButton "Delete Model" "btn-outline-danger" DeleteModel
+                    ]
+                ]
+            ]
+        ]
+
+
+viewGraphCanvas : Model -> Html Msg
+viewGraphCanvas model =
+    div
+        [ class "col-6 bg-dark text-white" ]
+        [ svg
+            [ viewBox 0 0 w h ]
+            [ g [ TypedSvg.Attributes.class [ "links" ] ] <|
+                List.map (linkElement (initGraph model)) <|
+                    Graph.edges (initGraph model)
+            , g [ TypedSvg.Attributes.class [ "nodes" ] ] <|
+                List.map nodeElement <|
+                    Graph.nodes (initGraph model)
+            ]
+        ]
+
+
+viewRightMenuBar : Model -> Html Msg
+viewRightMenuBar model =
+    div
+        [ class "shadow bar-scroll col-3" ]
+        [ div [ class "m-0 w-100" ]
+            [ div
+                [ class "bg-dark w-100 mt-2" ]
+                [ p
+                    [ class "p-1 m-0 text-primary border-bottom border-white" ]
+                    [ text "Model KPIs" ]
+                , table
+                    [ class "my-3" ]
+                    [ viewRow "# Nodes:" model.numConcepts
+                    , viewRow "# Edges:" model.numConnections
+                    , viewRow "# Transmitters:" model.numTransmitters
+                    , viewRow "# Receivers:" model.numReceivers
+                    , viewRow "# Ordinary:" model.numOrdinary
+                    , viewRowFloat "C/N Score:" model.cnScore
+                    , viewRowFloat "Complexity" model.complexityScore
+                    , viewRowFloat "Density" model.densityScore
+                    ]
+                , viewTable "Nodes" viewNodes model.nodes
+                , viewTable "Edges" viewEdges model.edges
+                , viewTable "Simulation" viewSimulatedNodes model.simulatedNodes
+                , viewTable "Target" viewTargetNodes model.targetNodes
                 ]
             ]
         ]
@@ -1207,14 +1323,15 @@ view model =
 -- FORMS
 
 
-viewNodeForm : Model -> NodeForm -> Html Msg
-viewNodeForm model node =
+viewNodeInputForm : Model -> NodeForm -> Html Msg
+viewNodeInputForm model node =
     div
-        [ class "accordion mt-3" ]
+        [ class "accordion mt-5"
+        ]
         [ div
-            [ class "shadow card border-0 text-center"
+            [ class "shadow card border-0 m-auto w-50"
             , style "border-radius" "2rem"
-            , style "width" "180px"
+            , style "min-width" "180px"
             ]
             [ viewFormHeader "Node" DisplayNodeForm
             , form
@@ -1238,14 +1355,14 @@ viewNodeForm model node =
         ]
 
 
-viewEdgeForm : Model -> EdgeForm -> Html Msg
-viewEdgeForm model edge =
+viewEdgeInputForm : Model -> EdgeForm -> Html Msg
+viewEdgeInputForm model edge =
     div
         [ class "accordion mt-3" ]
         [ div
-            [ class "shadow card border-0 text-center"
+            [ class "shadow card border-0 m-auto w-50"
             , style "border-radius" "2rem"
-            , style "width" "180px"
+            , style "min-width" "180px"
             ]
             [ viewFormHeader "Edge" DisplayEdgeForm
             , form
@@ -1263,23 +1380,23 @@ viewEdgeForm model edge =
                     , viewInputNumber "Tru" edge.truth UpdateEdgeTruth
                     , viewInputNumber "Ind" edge.indeterminacy UpdateEdgeIndeterminacy
                     , viewInputNumber "Fal" edge.falsehood UpdateEdgeFalsehood
-                    , viewFormButtonEdge "Add Edge"
+                    , viewFormButton "Add Edge"
                     ]
                 ]
             ]
         ]
 
 
-viewSimulationForm : Model -> SimulationForm -> Html Msg
-viewSimulationForm model simNode =
+viewSimulationInputForm : Model -> SimulationForm -> Html Msg
+viewSimulationInputForm model simNode =
     div
         [ class "accordion mt-3"
         , id "accordionExample"
         ]
         [ div
-            [ class "shadow card border-0 text-center"
+            [ class "shadow card border-0 m-auto w-50"
             , style "border-radius" "2rem"
-            , style "width" "180px"
+            , style "min-width" "180px"
             ]
             [ viewFormHeader "Simulate" DisplaySimForm
             , form
@@ -1305,9 +1422,9 @@ viewTargetNodeForm model targetNode =
     div
         [ class "accordion mt-3" ]
         [ div
-            [ class "shadow card border-0 text-center"
+            [ class "shadow card border-0 m-auto w-50"
             , style "border-radius" "2rem"
-            , style "width" "180px"
+            , style "min-width" "180px"
             ]
             [ viewFormHeader "Target" DisplayTargetForm
             , form
@@ -1525,16 +1642,6 @@ viewNodeOpt node =
     option [ class "tb-header-label" ] [ text node.label ]
 
 
-viewFormButtonEdge : String -> Html msg
-viewFormButtonEdge p =
-    button
-        [ class "btn btn-sm btn-outline-primary w-100 mt-3"
-        , type_ "submit"
-        , style "border-radius" "2rem"
-        ]
-        [ text p ]
-
-
 viewFormButton : String -> Html msg
 viewFormButton p =
     button
@@ -1548,10 +1655,24 @@ viewFormButton p =
 viewMenuButton : String -> Html msg
 viewMenuButton p =
     button
-        [ class "shadow btn btn-sm btn-outline-secondary btn-circle mt-2 mx-1 px-1"
+        [ class "btn btn-sm btn-outline-secondary btn-circle my-3"
         , type_ "submit"
         , style "border-radius" "2rem"
-        , disabled True
+
+        --, disabled True
+        ]
+        [ text p ]
+
+
+viewControlButton : String -> String -> msg -> Html msg
+viewControlButton p c msg =
+    button
+        [ class "shadow btn btn-sm w-50 mx-auto mb-2 px-1"
+        , class c
+        , type_ "submit"
+        , style "border-radius" "2rem"
+        , style "min-width" "180px"
+        , onClick msg
         ]
         [ text p ]
 
