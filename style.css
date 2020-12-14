@@ -6,18 +6,18 @@
 }
 
 body {
-   max-width: 100vw;
+    max-width: 100vw;
 }
 
 .app {
-   display: flex;
-   overflow: scroll;
-   width: 100vw;
-   height: 100vh;
+    display: flex;
+    overflow: hidden;
+    max-width: 100vw;
+    max-height: 100vh;
 }
 
 .bar-scroll {
-   overflow-x: scroll;
+    overflow-x: scroll;
 }
 
 .tb-header-label {
