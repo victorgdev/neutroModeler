@@ -17,6 +17,27 @@ port module Main exposing (..)
              - Icons for the buttons
              - Adding DropDown menu for Edges, SimNodes, Target Nodes
              - Change the color of the node in graph and table to ID simNode and targetNode
+
+            Set storage port example
+
+            , update = updateWithStorage
+            , subscriptions = \_ -> Sub.none
+            }
+
+
+            port setStorage : List NeutroNode -> Cmd msg
+
+
+            updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
+            updateWithStorage msg model =
+            let
+            ( newModel, cmds ) =
+                update msg model
+            in
+            ( newModel
+            , Cmd.batch [ setStorage newModel.nodes, cmds ]
+            )
+
 -}
 
 import Browser
@@ -50,26 +71,31 @@ import TypedSvg.Types exposing (Paint(..))
 
 main : Program () Model Msg
 main =
-    Browser.document
+    Browser.element
         { init = init
-        , view = \model -> { title = "NeutroModeler", body = [ view model ] }
-        , update = updateWithStorage
-        , subscriptions = \_ -> Sub.none
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
         }
 
 
-port setStorage : List NeutroNode -> Cmd msg
+
+-- PORTS
 
 
-updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
-updateWithStorage msg model =
-    let
-        ( newModel, cmds ) =
-            update msg model
-    in
-    ( newModel
-    , Cmd.batch [ setStorage newModel.nodes, cmds ]
-    )
+port sendMessage : String -> Cmd msg
+
+
+port messageReceiver : (String -> msg) -> Sub msg
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    messageReceiver Recv
 
 
 
@@ -82,7 +108,6 @@ type alias Model =
     , edges : List NeutroEdge
     , simulatedNodes : List SimulatedNode
     , targetNodes : List TargetNode
-    , nodeInfo : List NodeInfo
 
     -- Forms
     , nodeForm : NodeForm
@@ -106,6 +131,10 @@ type alias Model =
     , cnScore : Float -- connections (edges) / concepts (nodes) ratio
     , complexityScore : Float -- transmitters nodes / receivers nodes ratio
     , densityScore : Float -- connections (edges) / (concepts (nodes) * (concepts (nodes) - 1)) ratio
+
+    -- Ports testing
+    , draft : String
+    , messages : List String
     }
 
 
@@ -113,16 +142,17 @@ type alias Model =
 -- TYPES
 
 
-type alias NodeId =
-    Int
+nodeStates =
+    [ "Regular", "Simulation", "Target" ]
 
 
 type alias NeutroNode =
-    { nodeId : NodeId
+    { nodeId : Int
     , label : String
     , truth : Float
     , indeterminacy : Float
     , falsehood : Float
+    , nodeState : String
     }
 
 
@@ -136,27 +166,20 @@ type alias NeutroEdge =
     }
 
 
-type alias NodeInfo =
-    { nodeIndex : Int
-    , nodeLabel : String
-    }
-
-
 type alias SimulatedNode =
     { simNodeId : NodeId
     , simNodeLabel : String
     , simNodeTruth : Float
     , simNodeIndeterminacy : Float
     , simNodeFalsehood : Float
+    , nodeState : String
     }
 
 
 type alias TargetNode =
     { targetNodeId : NodeId
     , targetNodeLabel : String
-    , targetNodeTruth : Float
-    , targetNodeIndeterminacy : Float
-    , targetNodeFalsehood : Float
+    , nodeState : String
     }
 
 
@@ -179,6 +202,7 @@ type alias NodeForm =
     , indeterminacy : NeutroField
     , falsehood : NeutroField
     , hideForm : Bool
+    , nodeState : String
     }
 
 
@@ -200,16 +224,15 @@ type alias SimulationForm =
     , simNodeIndeterminacy : NeutroField
     , simNodeFalsehood : NeutroField
     , hideForm : Bool
+    , nodeState : String
     }
 
 
 type alias TargetNodeForm =
     { targetNodeId : Int
     , targetNodeLabel : String
-    , targetNodeTruth : NeutroField
-    , targetNodeIndeterminacy : NeutroField
-    , targetNodeFalsehood : NeutroField
     , hideForm : Bool
+    , nodeState : String
     }
 
 
@@ -237,6 +260,7 @@ hideNodeForm =
     , indeterminacy = NeutroField Nothing ""
     , falsehood = NeutroField Nothing ""
     , hideForm = True
+    , nodeState = Maybe.withDefault "" (List.head nodeStates)
     }
 
 
@@ -248,6 +272,7 @@ displayNodeForm =
     , indeterminacy = NeutroField Nothing ""
     , falsehood = NeutroField Nothing ""
     , hideForm = False
+    , nodeState = Maybe.withDefault "" (List.head nodeStates)
     }
 
 
@@ -283,6 +308,7 @@ hideSimulationForm =
     , simNodeIndeterminacy = NeutroField Nothing ""
     , simNodeFalsehood = NeutroField Nothing ""
     , hideForm = True
+    , nodeState = "Simulation"
     }
 
 
@@ -294,6 +320,7 @@ displaySimulationForm =
     , simNodeIndeterminacy = NeutroField Nothing ""
     , simNodeFalsehood = NeutroField Nothing ""
     , hideForm = False
+    , nodeState = "Simulation"
     }
 
 
@@ -301,10 +328,8 @@ hideTargetNodeForm : TargetNodeForm
 hideTargetNodeForm =
     { targetNodeId = 0
     , targetNodeLabel = ""
-    , targetNodeTruth = NeutroField Nothing ""
-    , targetNodeIndeterminacy = NeutroField Nothing ""
-    , targetNodeFalsehood = NeutroField Nothing ""
     , hideForm = True
+    , nodeState = "Target"
     }
 
 
@@ -312,10 +337,8 @@ displayTargetNodeForm : TargetNodeForm
 displayTargetNodeForm =
     { targetNodeId = 0
     , targetNodeLabel = ""
-    , targetNodeTruth = NeutroField Nothing ""
-    , targetNodeIndeterminacy = NeutroField Nothing ""
-    , targetNodeFalsehood = NeutroField Nothing ""
     , hideForm = False
+    , nodeState = "Target"
     }
 
 
@@ -326,7 +349,6 @@ initModel =
     , edges = []
     , simulatedNodes = []
     , targetNodes = []
-    , nodeInfo = []
 
     -- Forms
     , nodeForm = hideNodeForm
@@ -350,6 +372,8 @@ initModel =
     , cnScore = 0.0
     , complexityScore = 0.0
     , densityScore = 0.0
+    , draft = ""
+    , messages = []
     }
 
 
@@ -372,11 +396,6 @@ w =
 h : Float
 h =
     800
-
-
-colorScale : SequentialScale Color
-colorScale =
-    Scale.sequential Scale.Color.viridisInterpolator ( 200, 700 )
 
 
 initGraph : Model -> Graph Entity ()
@@ -503,7 +522,7 @@ nodeElement node =
                 , cx node.label.x
                 , cy node.label.y
                 , fill PaintNone
-                , stroke <| Paint <| Scale.convert colorScale node.label.x
+                , stroke <| Paint <| Color.rgba 255 255 255 1
                 ]
                 []
             ]
@@ -566,6 +585,8 @@ type Msg
     | DisplayEdgeForm
     | DisplaySimForm
     | DisplayTargetForm
+      -- Ports
+    | Recv String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -601,9 +622,14 @@ update msg model =
                 newNode =
                     let
                         newNodeId =
-                            model.nodeForm.nodeId + 1
+                            if model.nodeForm.nodeId == 0 then
+                                0
+
+                            else
+                                model.nodeForm.nodeId + 1
 
                         newNodeLabel =
+                            -- TODO: Create validation to prevent same label nodes
                             model.nodeForm.label
 
                         newTruth =
@@ -629,6 +655,7 @@ update msg model =
                     , truth = newTruth
                     , indeterminacy = newIndeterminacy
                     , falsehood = newFalsehood
+                    , nodeState = "Regular"
                     }
 
                 newForm =
@@ -636,14 +663,13 @@ update msg model =
             in
             ( { model
                 | nodeForm = newForm
-                , nodes =
-                    model.nodes ++ [ newNode ]
+                , nodes = model.nodes ++ [ newNode ]
                 , numConcepts = List.length model.nodes + 1
                 , cnScore = newCnScore
                 , complexityScore = newComplexityScore
                 , densityScore = newDensityScore
               }
-            , Cmd.none
+            , sendMessage newNode.label
             )
 
         AddEdge ->
@@ -780,6 +806,7 @@ update msg model =
                             |> neutroFieldToString
                             |> String.toFloat
                             |> Maybe.withDefault 0.0
+                    , nodeState = "Simulation"
                     }
 
                 newSimulationForm =
@@ -798,21 +825,7 @@ update msg model =
                 newTargetNode =
                     { targetNodeId = model.targetNodeForm.targetNodeId + 1
                     , targetNodeLabel = model.targetNodeForm.targetNodeLabel
-                    , targetNodeTruth =
-                        model.targetNodeForm.targetNodeTruth
-                            |> neutroFieldToString
-                            |> String.toFloat
-                            |> Maybe.withDefault 0.0
-                    , targetNodeIndeterminacy =
-                        model.targetNodeForm.targetNodeIndeterminacy
-                            |> neutroFieldToString
-                            |> String.toFloat
-                            |> Maybe.withDefault 0.0
-                    , targetNodeFalsehood =
-                        model.targetNodeForm.targetNodeFalsehood
-                            |> neutroFieldToString
-                            |> String.toFloat
-                            |> Maybe.withDefault 0.0
+                    , nodeState = "Target"
                     }
 
                 newTargetNodeForm =
@@ -857,7 +870,12 @@ update msg model =
                 newNodeForm =
                     { oldNodeForm | label = newLabel }
             in
-            ( { model | nodeForm = newNodeForm }, Cmd.none )
+            ( { model
+                | nodeForm = newNodeForm
+                , draft = model.nodeForm.label
+              }
+            , Cmd.none
+            )
 
         UpdateNodeTruth newTruth ->
             let
@@ -1216,6 +1234,11 @@ update msg model =
             , Cmd.none
             )
 
+        Recv message ->
+            ( { model | messages = model.messages ++ [ message ] }
+            , Cmd.none
+            )
+
 
 
 -- VIEW
@@ -1238,16 +1261,14 @@ viewLeftMenuBar model =
         , style "height" "100vh"
         ]
         [ div
-            [ class "d-flex"
-            ]
+            [ class "d-flex" ]
             [ div
                 [ class "shadow d-inline-block"
                 , style "max-width" "80px"
                 , style "height" "100vh"
                 ]
                 [ div
-                    [ class "w-full m-0 p-auto"
-                    ]
+                    [ class "w-full m-0 p-auto" ]
                     [ viewMenuButton "Save"
                     , viewMenuButton "Open"
                     , viewMenuButton "Import"
@@ -1267,6 +1288,11 @@ viewLeftMenuBar model =
                     [ class "container-fluid m-0 p-0 d-inline-block w-50 mx-auto mt-5" ]
                     [ viewControlButton "Run Model" "btn-outline-success" DeleteModel
                     , viewControlButton "Delete Model" "btn-outline-danger" DeleteModel
+                    ]
+                , div []
+                    [ h1 [] [ text "Echo Chat" ]
+                    , ul []
+                        (List.map (\msg -> li [] [ text msg ]) model.messages)
                     ]
                 ]
             ]
@@ -1467,7 +1493,7 @@ viewNode : NeutroNode -> Html Msg
 viewNode node =
     tr []
         [ td [ class "tb-header-label align-center text-white align-middle text-left border-0" ] [ text node.label ]
-        , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
+        , td [ class "tb-header-label text-white text-center border-0" ] [ text "-" ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.truth) ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.indeterminacy) ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.falsehood) ]
@@ -1539,7 +1565,7 @@ viewSimulatedNode : SimulatedNode -> Html Msg
 viewSimulatedNode simulatedNode =
     tr []
         [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text simulatedNode.simNodeLabel ]
-        , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
+        , td [ class "tb-header-label text-white text-center border-0" ] [ text "-" ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeTruth) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeIndeterminacy) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.simNodeFalsehood) ]
@@ -1747,3 +1773,16 @@ nidToString nid =
 
         Nid (Just _) n ->
             n
+
+
+ifIsEnter : msg -> Decode.Decoder msg
+ifIsEnter msg =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                if key == "Enter" then
+                    Decode.succeed msg
+
+                else
+                    Decode.fail "some other key"
+            )
