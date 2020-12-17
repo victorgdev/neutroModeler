@@ -48,15 +48,13 @@ import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Html exposing (..)
 import Html.Attributes exposing (class, disabled, hidden, id, placeholder, required, src, step, style, type_, value)
 import Html.Events exposing (..)
-import Html.Events.Extra.Mouse as Mouse
 import IntDict
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (Decoder, Value, int, list, string)
+import Json.Decode.Pipeline as Decode exposing (optional)
 import List exposing (range)
-import Material.Icons.Round as Icon exposing (add, center_focus_weak, cloud_download, cloud_upload, delete_outline, folder, login, save, share)
 import Scale exposing (SequentialScale)
 import Scale.Color
 import Task
-import Time
 import Tuple exposing (pair)
 import TypedSvg exposing (circle, g, line, polygon, svg)
 import TypedSvg.Attributes exposing (fill, points, stroke, viewBox)
@@ -75,25 +73,38 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         }
+
+
+type alias NodesForJs =
+    { neutroNodes : List NeutroNode
+    , edges : List NeutroEdge
+
+    -- ... some additional field
+    }
 
 
 
 -- PORTS
 
 
-port sendModel : NeutroModel -> Cmd msg
+port sendModel : NodesForJs -> Cmd msg
 
 
-port messageReceiver : (NeutroModel -> msg) -> Sub msg
+port messageReceiver : (Value -> msg) -> Sub msg
 
 
 
 -- SUBSCRIPTIONS
---subscriptions : NeutroModel -> Sub Msg
---subscriptions _ =
---    messageReceiver Recv
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    messageReceiver Recv
+
+
+
 -- MODEL
 
 
@@ -201,6 +212,14 @@ type alias TargetNode =
     , targetNodeLabel : String
     , nodeState : String
     }
+
+
+type alias ResultNode =
+    { id : String, val : Int }
+
+
+type alias NeutroResult =
+    List ResultNode
 
 
 
@@ -595,7 +614,7 @@ type Msg
     | DisplayCurState
     | DisplaySimState
       -- Ports
-    | Recv
+    | Recv Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -627,7 +646,15 @@ update msg model =
             ( model, Cmd.none )
 
         RunSimulation ->
-            ( model, sendModel model.neutroModel )
+            let
+                mapNodesToJSNodes : NeutroModel -> NodesForJs
+                mapNodesToJSNodes m =
+                    -- data manipulation with NeutroModel...
+                    { neutroNodes = []
+                    , edges = []
+                    }
+            in
+            ( model, sendModel <| mapNodesToJSNodes model.neutroModel )
 
         AddNode ->
             let
@@ -1406,7 +1433,17 @@ update msg model =
             , Cmd.none
             )
 
-        Recv ->
+        Recv val ->
+            let
+                decodeResultNode : Decoder ResultNode
+                decodeResultNode =
+                    Decode.succeed ResultNode
+                        |> Decode.required "id" string
+                        |> Decode.required "val" int
+
+                _ =
+                    Debug.log "test" (Decode.decodeValue (list decodeResultNode) val)
+            in
             ( { model | messages = model.messages }
             , Cmd.none
             )
