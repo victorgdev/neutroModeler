@@ -57,6 +57,7 @@ import Scale exposing (SequentialScale)
 import Scale.Color
 import Task
 import Time
+import Tuple exposing (pair)
 import TypedSvg exposing (circle, g, line, polygon, svg)
 import TypedSvg.Attributes exposing (fill, points, stroke, viewBox)
 import TypedSvg.Attributes.InPx exposing (cx, cy, r, strokeWidth, x1, x2, y1, y2)
@@ -74,7 +75,7 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = subscriptions
+        , subscriptions = \_ -> Sub.none
         }
 
 
@@ -82,22 +83,17 @@ main =
 -- PORTS
 
 
-port sendMessage : String -> Cmd msg
+port sendModel : NeutroModel -> Cmd msg
 
 
-port messageReceiver : (String -> msg) -> Sub msg
+port messageReceiver : (NeutroModel -> msg) -> Sub msg
 
 
 
 -- SUBSCRIPTIONS
-
-
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-    messageReceiver Recv
-
-
-
+--subscriptions : NeutroModel -> Sub Msg
+--subscriptions _ =
+--    messageReceiver Recv
 -- MODEL
 
 
@@ -107,6 +103,8 @@ type alias Model =
     , edges : List NeutroEdge
     , simulatedNodes : List SimulatedNode
     , targetNodes : List TargetNode
+    , neutroModel : NeutroModel
+    , nodeLabelPair : List ( Int, String )
 
     -- Forms
     , nodeForm : NodeForm
@@ -144,7 +142,7 @@ type alias Model =
 
     -- Ports testing
     , draft : String
-    , messages : List String
+    , messages : NeutroModel
     }
 
 
@@ -275,6 +273,15 @@ type alias CustomNode =
 -- MODEL DEFAULTS
 
 
+defaultNeutroModel : NeutroModel
+defaultNeutroModel =
+    { nodes = []
+    , edges = []
+    , simNodes = []
+    , targetNodes = []
+    }
+
+
 defaultNodeForm : NodeForm
 defaultNodeForm =
     { nodeId = 0
@@ -328,6 +335,8 @@ initModel =
     , edges = []
     , simulatedNodes = []
     , targetNodes = []
+    , neutroModel = defaultNeutroModel
+    , nodeLabelPair = []
 
     -- Forms
     , nodeForm = defaultNodeForm
@@ -339,9 +348,9 @@ initModel =
     , edgeFormDisplay = True
     , simFormDisplay = True
     , targetFormDisplay = True
-    , disableEdgeForm = "card-header m-0 p-1 bg-secondary text-center"
-    , disableSimForm = "card-header m-0 p-1 bg-secondary text-center"
-    , disableTargetForm = "card-header m-0 p-1 bg-secondary text-center"
+    , disableEdgeForm = "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
+    , disableSimForm = "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
+    , disableTargetForm = "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
 
     -- Tables
     , edgeTableDisplay = True
@@ -362,8 +371,10 @@ initModel =
     , cnScore = 0.0
     , complexityScore = 0.0
     , densityScore = 0.0
+
+    -- Ports
     , draft = ""
-    , messages = []
+    , messages = defaultNeutroModel
     }
 
 
@@ -541,6 +552,7 @@ neutroGraph model =
 
 type Msg
     = NoOp
+    | RunSimulation
       -- Adding
     | AddNode
     | AddEdge
@@ -583,7 +595,7 @@ type Msg
     | DisplayCurState
     | DisplaySimState
       -- Ports
-    | Recv String
+    | Recv
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -613,6 +625,9 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        RunSimulation ->
+            ( model, sendModel model.neutroModel )
 
         AddNode ->
             let
@@ -657,6 +672,16 @@ update msg model =
 
                 newForm =
                     defaultNodeForm
+
+                newNeutroModelNodes =
+                    { nodes = model.neutroModel.nodes ++ [ newNode ]
+                    , edges = model.neutroModel.edges
+                    , simNodes = model.neutroModel.simNodes
+                    , targetNodes = model.neutroModel.targetNodes
+                    }
+
+                newNodeLabelPair =
+                    pair model.nodeForm.nodeId model.nodeForm.label
             in
             ( { model
                 | nodeForm = newForm
@@ -665,8 +690,12 @@ update msg model =
                 , cnScore = newCnScore
                 , complexityScore = newComplexityScore
                 , densityScore = newDensityScore
+                , neutroModel = newNeutroModelNodes
+                , nodeLabelPair = model.nodeLabelPair ++ [ newNodeLabelPair ]
+
+                --TODO: Finalize label pair implementation for the implementation of edge inputs dropdown list. Next: implement dropdown, fix graph edgelist to receive tuple and functions to access label pairs
               }
-            , sendMessage newNode.label
+            , Cmd.none
             )
 
         AddEdge ->
@@ -716,6 +745,13 @@ update msg model =
 
                 newEdgeForm =
                     defaultEdgeForm
+
+                newNeutroModelEdges =
+                    { nodes = model.neutroModel.nodes
+                    , edges = model.neutroModel.edges ++ [ newEdge ]
+                    , simNodes = model.neutroModel.simNodes
+                    , targetNodes = model.neutroModel.targetNodes
+                    }
 
                 newTransmitter =
                     model.edgeForm.from
@@ -779,6 +815,7 @@ update msg model =
                 , cnScore = newCnScore
                 , complexityScore = newComplexityScore
                 , densityScore = newDensityScore
+                , neutroModel = newNeutroModelEdges
               }
             , Cmd.none
             )
@@ -825,11 +862,18 @@ update msg model =
 
                 newSimulationForm =
                     defaultSimulationForm
+
+                newNeutroModelSimNodes =
+                    { nodes = model.neutroModel.nodes
+                    , edges = model.neutroModel.edges
+                    , simNodes = model.neutroModel.simNodes ++ [ newSimulationNode ]
+                    , targetNodes = model.neutroModel.targetNodes
+                    }
             in
             ( { model
                 | simulationForm = newSimulationForm
-                , simulatedNodes =
-                    model.simulatedNodes ++ [ newSimulationNode ]
+                , simulatedNodes = model.simulatedNodes ++ [ newSimulationNode ]
+                , neutroModel = newNeutroModelSimNodes
               }
             , Cmd.none
             )
@@ -844,32 +888,87 @@ update msg model =
 
                 newTargetNodeForm =
                     defaultTargetNodeForm
+
+                newNeutroModelTargetNodes =
+                    let
+                        newTargetNodeNeutroModel =
+                            model.neutroModel.targetNodes ++ [ newTargetNode ]
+                    in
+                    { nodes = model.neutroModel.nodes
+                    , edges = model.neutroModel.edges
+                    , simNodes = model.neutroModel.simNodes
+                    , targetNodes = newTargetNodeNeutroModel
+                    }
             in
             ( { model
                 | targetNodeForm = newTargetNodeForm
-                , targetNodes =
-                    model.targetNodes ++ [ newTargetNode ]
+                , targetNodes = model.targetNodes ++ [ newTargetNode ]
+                , neutroModel = newNeutroModelTargetNodes
               }
             , Cmd.none
             )
 
         DeleteNode nodeId ->
-            ( { model | nodes = List.filter (\n -> n.nodeId /= nodeId) model.nodes }
+            let
+                newNeutroModelNodesDeleted =
+                    { nodes = List.filter (\n -> n.nodeId /= nodeId) model.neutroModel.nodes
+                    , edges = model.neutroModel.edges
+                    , simNodes = model.neutroModel.simNodes
+                    , targetNodes = model.neutroModel.targetNodes
+                    }
+            in
+            ( { model
+                | nodes = List.filter (\n -> n.nodeId /= nodeId) model.nodes
+                , neutroModel = newNeutroModelNodesDeleted
+              }
             , Cmd.none
             )
 
         DeleteEdge edgeId ->
-            ( { model | edges = List.filter (\n -> n.edgeId /= edgeId) model.edges }
+            let
+                newNeutroModelEdgesDeleted =
+                    { nodes = model.neutroModel.nodes
+                    , edges = List.filter (\n -> n.edgeId /= edgeId) model.neutroModel.edges
+                    , simNodes = model.neutroModel.simNodes
+                    , targetNodes = model.neutroModel.targetNodes
+                    }
+            in
+            ( { model
+                | edges = List.filter (\n -> n.edgeId /= edgeId) model.edges
+                , neutroModel = newNeutroModelEdgesDeleted
+              }
             , Cmd.none
             )
 
-        DeleteSimNode nodeId ->
-            ( { model | simulatedNodes = List.filter (\n -> n.simNodeId /= nodeId) model.simulatedNodes }
+        DeleteSimNode simNodeId ->
+            let
+                newNeutroModelSimNodesDeleted =
+                    { nodes = model.neutroModel.nodes
+                    , edges = model.neutroModel.edges
+                    , simNodes = List.filter (\n -> n.simNodeId /= simNodeId) model.neutroModel.simNodes
+                    , targetNodes = model.neutroModel.targetNodes
+                    }
+            in
+            ( { model
+                | simulatedNodes = List.filter (\n -> n.simNodeId /= simNodeId) model.simulatedNodes
+                , neutroModel = newNeutroModelSimNodesDeleted
+              }
             , Cmd.none
             )
 
-        DeleteTargetNode nodeId ->
-            ( { model | targetNodes = List.filter (\n -> n.targetNodeId /= nodeId) model.targetNodes }
+        DeleteTargetNode targetNodeId ->
+            let
+                newNeutroModelTargetDeleted =
+                    { nodes = model.neutroModel.nodes
+                    , edges = model.neutroModel.edges
+                    , simNodes = model.neutroModel.simNodes
+                    , targetNodes = List.filter (\n -> n.targetNodeId /= targetNodeId) model.neutroModel.targetNodes
+                    }
+            in
+            ( { model
+                | targetNodes = List.filter (\n -> n.targetNodeId /= targetNodeId) model.targetNodes
+                , neutroModel = newNeutroModelTargetDeleted
+              }
             , Cmd.none
             )
 
@@ -886,21 +985,21 @@ update msg model =
 
                 enableEdgeForm =
                     if List.length model.nodes < 2 then
-                        "card-header m-0 p-1 bg-secondary text-center"
+                        "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
 
                     else
                         "card-header m-0 p-1 bg-primary text-center"
 
                 enableSimForm =
                     if model.nodes == [] then
-                        "card-header m-0 p-1 bg-secondary text-center"
+                        "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
 
                     else
                         "card-header m-0 p-1 bg-primary text-center"
 
                 enableTargetForm =
                     if model.nodes == [] then
-                        "card-header m-0 p-1 bg-secondary text-center"
+                        "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
 
                     else
                         "card-header m-0 p-1 bg-primary text-center"
@@ -1227,7 +1326,7 @@ update msg model =
                 , targetFormDisplay = True
                 , disableEdgeForm =
                     if List.length model.nodes < 2 then
-                        "card-header m-0 p-1 bg-secondary text-center"
+                        "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
 
                     else
                         "card-header m-0 p-1 bg-primary text-center"
@@ -1249,7 +1348,7 @@ update msg model =
                 , targetFormDisplay = True
                 , disableSimForm =
                     if model.nodes == [] then
-                        "card-header m-0 p-1 bg-secondary text-center"
+                        "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
 
                     else
                         "card-header m-0 p-1 bg-primary text-center"
@@ -1271,7 +1370,7 @@ update msg model =
                 , simFormDisplay = True
                 , disableTargetForm =
                     if model.nodes == [] then
-                        "card-header m-0 p-1 bg-secondary text-center"
+                        "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
 
                     else
                         "card-header m-0 p-1 bg-primary text-center"
@@ -1307,8 +1406,8 @@ update msg model =
             , Cmd.none
             )
 
-        Recv message ->
-            ( { model | messages = model.messages ++ [ message ] }
+        Recv ->
+            ( { model | messages = model.messages }
             , Cmd.none
             )
 
@@ -1330,36 +1429,40 @@ view model =
 viewLeftMenuBar : Model -> Html Msg
 viewLeftMenuBar model =
     div
-        [ class "col-3 text-center m-0 p-0"
+        [ class "col-3 text-center m-0 p-0 d-flex"
         , style "height" "100vh"
         ]
-        [ div
-            [ class "d-flex" ]
-            [ div
-                [ class "shadow d-inline-block"
-                , style "max-width" "80px"
-                , style "height" "100vh"
-                ]
-                [ div
-                    [ class "w-full m-0 p-auto" ]
-                    [ viewMenuButton "Save"
-                    , viewMenuButton "Open"
-                    , viewMenuButton "Import"
-                    , viewMenuButton "Export"
-                    , viewMenuButton "Logout"
-                    ]
-                ]
-            , div
-                [ class "container-fluid m-0 p-0 d-inline-block"
-                , style "height" "100vh"
-                ]
-                [ viewNodeInputForm model model.nodeForm
-                , viewEdgeInputForm model model.edgeForm
-                , viewSimulationInputForm model model.simulationForm
-                , viewTargetNodeForm model model.targetNodeForm
-                , viewModelControl
-                ]
-            ]
+        [ viewVerticalMenu
+        , viewInputFormsSection model
+        ]
+
+
+viewVerticalMenu : Html Msg
+viewVerticalMenu =
+    div
+        [ class "shadow d-inline-block w-full m-0 p-auto"
+        , style "max-width" "80px"
+        , style "height" "100vh"
+        ]
+        [ viewMenuButton "Save"
+        , viewMenuButton "Open"
+        , viewMenuButton "Import"
+        , viewMenuButton "Export"
+        , viewMenuButton "Logout"
+        ]
+
+
+viewInputFormsSection : Model -> Html Msg
+viewInputFormsSection model =
+    div
+        [ class "container-fluid m-0 p-0 d-inline-block"
+        , style "height" "100vh"
+        ]
+        [ viewNodeInputForm model model.nodeForm
+        , viewEdgeInputForm model model.edgeForm
+        , viewSimulationInputForm model model.simulationForm
+        , viewTargetNodeForm model model.targetNodeForm
+        , viewModelControl
         ]
 
 
@@ -1390,7 +1493,9 @@ viewRightMenuBar model =
                 [ viewCurrentState model ]
             , div
                 [ hidden model.simStateTabDisplay ]
-                [ viewSimulationResults model ]
+                []
+
+            --[ viewSimulationResults model ]
             ]
         ]
 
@@ -1521,10 +1626,12 @@ viewTargetNodeForm model targetNode =
 viewModelControl : Html Msg
 viewModelControl =
     div
-        [ class "accordion mt-3" ]
+        [ class "accordion mt-3 m-auto w-100"
+        , style "max-width" "180px"
+        ]
         [ div
             [ class "d-inline-block mx-auto my-5" ]
-            [ viewControlButton "Run Model" "btn-outline-success" DeleteModel
+            [ viewControlButton "Run Model" "btn-outline-success" RunSimulation
             , viewControlButton "Delete Model" "btn-outline-danger" DeleteModel
             ]
         ]
@@ -1546,15 +1653,16 @@ viewCurrentState model =
         ]
 
 
-viewSimulationResults model =
-    div []
-        [ h1 [] [ text "Simulation Results" ]
-        , ul
-            [ class "text-white"
-            , style "style" "none"
-            ]
-            (List.map (\msg -> li [] [ text msg ]) model.messages)
-        ]
+
+--viewSimulationResults model =
+--    div []
+--        [ h1 [] [ text "Simulation Results" ]
+--        , ul
+--            [ class "text-white"
+--            , style "style" "none"
+--            ]
+--            (List.map (\msg -> li [] [ text msg ]) model.messages)
+--        ]
 
 
 viewNodes : List NeutroNode -> Html Msg
@@ -1938,7 +2046,7 @@ viewRow p kpi =
 viewRowFloat : String -> Float -> Html msg
 viewRowFloat p kpi =
     tr
-        []
+        [ step "0.01" ]
         [ td [ class "tb-header-label text-white align-middle text-left" ] [ text p ]
         , td [ class "tb-header-label text-white align-middle text-right pl-3" ] [ text (String.fromFloat kpi) ]
         ]

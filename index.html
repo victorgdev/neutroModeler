@@ -23,8 +23,9 @@
 
    // When a command goes to the `sendMessage` port, we pass the message
    // along to the WebSocket.
-   app.ports.sendMessage.subscribe(function(message) {
+   app.ports.sendModel.subscribe(function(message) {
       socket.send(message);
+      console.log(message);
    });
 
 
