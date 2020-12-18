@@ -22,14 +22,21 @@
    });
 
    function computation(dataFromElm) {
-      console.log("this is the log", dataFromElm);
+      console.log("Data log from elm", dataFromElm);
 
       // ... come heavy computation
+      var nodes = dataFromElm.nodes;
+      var edges = dataFromElm.edges;
+      var simNodes = dataFromElm.simNodes;
+      var targetNodes = dataFromElm.targetNodes;
+
+
 
      const resultData =
         [
-           {id: "A", val: 10},
-           {id: "B", val: 10}
+           {nodeId: 1, label: "A", state: "Reg", truth: 0.5, indeterminacy: 0.5, falsehood: 0.5 },
+           {nodeId: 2, label: "B", state: "Sim", truth: 0.6, indeterminacy: 0.6, falsehood: 0.6 },
+           {nodeId: 3, label: "C", state: "Tar", truth: 0.7, indeterminacy: 0.7, falsehood: 0.7 },
         ]
 
      app.ports.messageReceiver.send(resultData);
