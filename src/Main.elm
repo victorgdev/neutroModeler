@@ -100,6 +100,7 @@ type alias Model =
     , targetNodes : List TargetNode
     , neutroModel : NeutroModel
     , nodeLabelPairs : List NodeLabelPair
+    , edgeFromToPairs : List ( String, String )
     , simLabels : List String
     , nodeLabels : List String
     , targetLabels : List String
@@ -134,6 +135,8 @@ type alias Model =
     , listOrdinaries : List Int
     , numConcepts : Int -- number of nodes
     , numConnections : Int -- number of edges
+    , numSimNodes : Int
+    , numTargetNodes : Int
     , numTransmitters : Int -- number of nodes that transmit impact (edges)
     , numReceivers : Int -- number of nodes that receive impact (edges)
     , numOrdinary : Int -- number of nodes that transmit and receive impact (edges)
@@ -225,12 +228,6 @@ type alias ResultNode =
 
 type alias NeutroResult =
     List ResultNode
-
-
-type alias TestEdges =
-    { from : Int
-    , to : Int
-    }
 
 
 
@@ -373,6 +370,7 @@ initModel =
     , targetNodes = []
     , neutroModel = defaultNeutroModel
     , nodeLabelPairs = []
+    , edgeFromToPairs = []
     , simLabels = []
     , nodeLabels = []
     , targetLabels = []
@@ -407,6 +405,8 @@ initModel =
     , listOrdinaries = []
     , numConcepts = 0
     , numConnections = 0
+    , numSimNodes = 0
+    , numTargetNodes = 0
     , numTransmitters = 0
     , numReceivers = 0
     , numOrdinary = 0
@@ -835,41 +835,114 @@ update msg model =
                     edgeFromToCheck model.edgeForm.to
 
                 newListTransmitters =
-                    newTransmitter :: model.listTransmitters
+                    if List.member newTransmitter model.listTransmitters == True then
+                        model.listTransmitters
+
+                    else
+                        newTransmitter :: model.listTransmitters
 
                 newListReceivers =
-                    newReceiver :: model.listReceivers
+                    if List.member newReceiver model.listReceivers == True then
+                        model.listReceivers
+
+                    else
+                        newReceiver :: model.listReceivers
 
                 newOrdinaryFromFrom =
-                    List.member newTransmitter model.listReceivers
+                    if List.member newTransmitter model.listReceivers == True && List.member newTransmitter model.listOrdinaries == True then
+                        False
+
+                    else if List.member newTransmitter model.listReceivers == False then
+                        False
+
+                    else
+                        True
 
                 newOrdinaryFromTo =
-                    List.member newReceiver model.listTransmitters
+                    if List.member newReceiver model.listTransmitters == True && List.member newReceiver model.listOrdinaries == True then
+                        False
+
+                    else if List.member newReceiver model.listTransmitters == False then
+                        False
+
+                    else
+                        True
 
                 newListOrdinaries =
                     if newOrdinaryFromFrom == True && newOrdinaryFromTo == True then
-                        model.listOrdinaries
+                        model.listOrdinaries ++ [ newTransmitter, newReceiver ]
 
                     else if newOrdinaryFromFrom == True && newOrdinaryFromTo == False then
-                        newReceiver :: model.listOrdinaries
+                        model.listOrdinaries ++ [ newTransmitter ]
 
                     else if newOrdinaryFromFrom == False && newOrdinaryFromTo == True then
-                        newTransmitter :: model.listOrdinaries
+                        model.listOrdinaries ++ [ newReceiver ]
 
                     else
-                        List.append [ newTransmitter, newReceiver ] model.listOrdinaries
-
-                newNumOrdinary =
-                    List.length model.listOrdinaries
+                        model.listOrdinaries
 
                 newNumConnections =
                     List.length model.edges + 1
 
                 newNumTransmitters =
-                    List.length model.listTransmitters + 1
+                    let
+                        transmitters =
+                            model.listTransmitters
+                    in
+                    if List.member newTransmitter transmitters == True then
+                        List.length transmitters
+
+                    else
+                        List.length transmitters + 1
 
                 newNumReceivers =
-                    List.length model.listReceivers + 1
+                    let
+                        receivers =
+                            model.listReceivers
+                    in
+                    if List.member newReceiver receivers then
+                        List.length receivers
+
+                    else
+                        List.length receivers + 1
+
+                newNumOrdinary =
+                    -- TODO: Fix this count
+                    let
+                        ordinaries =
+                            model.listOrdinaries
+
+                        currentTransmitter =
+                            let
+                                from =
+                                    model.edgeForm.from
+                            in
+                            from
+                                |> nidToString
+                                |> String.toInt
+                                |> Maybe.withDefault 0
+
+                        currentReceiver =
+                            let
+                                to =
+                                    model.edgeForm.to
+                            in
+                            to
+                                |> nidToString
+                                |> String.toInt
+                                |> Maybe.withDefault 0
+                    in
+                    if List.member currentReceiver ordinaries == True && List.member currentTransmitter ordinaries == True then
+                        List.length model.listOrdinaries + 2
+
+                    else if List.member currentReceiver ordinaries == True || List.member currentTransmitter ordinaries == True then
+                        List.length model.listOrdinaries + 1
+
+                    else
+                        List.length model.listOrdinaries
+
+                newEdgeCoordinates =
+                    pair (nidToString model.edgeForm.from) (nidToString model.edgeForm.to)
             in
             ( { model
                 | edgeForm = newEdgeForm
@@ -887,6 +960,7 @@ update msg model =
                 , neutroModel = newNeutroModelEdges
                 , disableRunButton = runBtnToggle
                 , disableDeleteButton = deleteBtnToggle
+                , edgeFromToPairs = model.edgeFromToPairs ++ [ newEdgeCoordinates ]
               }
             , Cmd.none
             )
@@ -915,7 +989,7 @@ update msg model =
                     , truth = newSimNodeTruth
                     , indeterminacy = newSimNodeIndeterminacy
                     , falsehood = newSimNodeFalsehood
-                    , state = "Sim" -- check if needed
+                    , state = "Sim"
                     , linkState = ""
                     }
 
@@ -928,6 +1002,9 @@ update msg model =
                     , simNodes = model.neutroModel.simNodes ++ [ newSimulationNode ]
                     , targetNodes = model.neutroModel.targetNodes
                     }
+
+                newNumSimNodes =
+                    List.length model.simulatedNodes + 1
             in
             ( { model
                 | simulationForm = newSimulationForm
@@ -936,6 +1013,7 @@ update msg model =
                 , disableRunButton = runBtnToggle
                 , disableDeleteButton = deleteBtnToggle
                 , simLabels = model.simLabels ++ [ model.simulationForm.simLabel ]
+                , numSimNodes = newNumSimNodes
               }
             , Cmd.none
             )
@@ -988,6 +1066,9 @@ update msg model =
 
                 indexToRemove =
                     nodeId
+
+                newNumConcepts =
+                    List.length model.nodes - 1
             in
             ( { model
                 | nodes = List.filter (\n -> n.nodeId /= nodeId) model.nodes
@@ -995,6 +1076,7 @@ update msg model =
                 , nodeLabelPairs = List.Extra.removeAt indexToRemove model.nodeLabelPairs
                 , disableRunButton = runBtnToggle
                 , disableDeleteButton = deleteBtnToggle
+                , numConcepts = newNumConcepts
               }
             , Cmd.none
             )
@@ -1007,12 +1089,32 @@ update msg model =
                     , simNodes = model.neutroModel.simNodes
                     , targetNodes = model.neutroModel.targetNodes
                     }
+
+                newNumConnections =
+                    List.length model.edges - 1
+
+                newNumTransmitters =
+                    let
+                        transmitters =
+                            model.listTransmitters
+                    in
+                    List.length transmitters - 1
+
+                newNumReceivers =
+                    let
+                        receivers =
+                            model.listReceivers
+                    in
+                    List.length receivers - 1
             in
             ( { model
                 | edges = List.filter (\n -> n.edgeId /= edgeId) model.edges
                 , neutroModel = newNeutroModelEdgesDeleted
                 , disableRunButton = runBtnToggle
                 , disableDeleteButton = deleteBtnToggle
+                , numConnections = newNumConnections
+                , numTransmitters = newNumTransmitters
+                , numReceivers = newNumReceivers
               }
             , Cmd.none
             )
@@ -1025,12 +1127,20 @@ update msg model =
                     , simNodes = List.filter (\n -> n.nodeId /= simNodeId) model.neutroModel.simNodes
                     , targetNodes = model.neutroModel.targetNodes
                     }
+
+                newNumSimNodes =
+                    if model.simulatedNodes == [] then
+                        0
+
+                    else
+                        List.length model.simulatedNodes - 1
             in
             ( { model
                 | simulatedNodes = List.filter (\n -> n.nodeId /= simNodeId) model.simulatedNodes
                 , neutroModel = newNeutroModelSimNodesDeleted
                 , disableRunButton = runBtnToggle
                 , disableDeleteButton = deleteBtnToggle
+                , numSimNodes = newNumSimNodes
               }
             , Cmd.none
             )
@@ -1059,6 +1169,7 @@ update msg model =
                 , edges = []
                 , simulatedNodes = []
                 , targetNodes = []
+                , neutroModel = defaultNeutroModel
                 , nodeLabelPairs = []
                 , targetLabels = []
                 , simLabels = []
@@ -1197,7 +1308,17 @@ update msg model =
                                 { oldEdgeForm | from = Nid (Just t) newFrom }
 
                 edgeDirectionValidation =
-                    if newFrom == nidToString model.edgeForm.to then
+                    let
+                        from =
+                            newFrom
+
+                        to =
+                            nidToString model.edgeForm.to
+
+                        edgeCoord =
+                            pair from to
+                    in
+                    if from == to || List.member edgeCoord model.edgeFromToPairs == True then
                         True
 
                     else
@@ -1234,7 +1355,17 @@ update msg model =
                                 { oldEdgeForm | to = Nid (Just t) newTo }
 
                 edgeDirectionValidation =
-                    if newTo == nidToString model.edgeForm.from then
+                    let
+                        from =
+                            nidToString model.edgeForm.from
+
+                        to =
+                            newTo
+
+                        edgeCoord =
+                            pair from to
+                    in
+                    if to == from || List.member edgeCoord model.edgeFromToPairs == True then
                         True
 
                     else
