@@ -163,10 +163,8 @@ type alias NodeLabelPair =
 
 
 type alias NeutroModel =
-    { nodes : List NeutroNode
-    , edges : List NeutroEdge
-    , simNodes : List NeutroNode
-    , targetNodes : List TargetNode
+    { modelNodes : List NeutroNode
+    , modelEdges : List NeutroEdge
     }
 
 
@@ -308,10 +306,8 @@ type alias CustomNode =
 
 defaultNeutroModel : NeutroModel
 defaultNeutroModel =
-    { nodes = []
-    , edges = []
-    , simNodes = []
-    , targetNodes = []
+    { modelNodes = []
+    , modelEdges = []
     }
 
 
@@ -618,8 +614,6 @@ type Msg
       -- Deleting
     | DeleteNode Int
     | DeleteEdge Int
-    | DeleteSimNode Int
-    | DeleteTargetNode Int
     | DeleteModel
       -- Node
     | UpdateNodeLabel String
@@ -763,10 +757,8 @@ update msg model =
                     defaultNodeForm
 
                 newNeutroModelNodes =
-                    { nodes = model.neutroModel.nodes ++ [ newNode ]
-                    , edges = model.neutroModel.edges
-                    , simNodes = model.neutroModel.simNodes
-                    , targetNodes = model.neutroModel.targetNodes
+                    { modelNodes = model.neutroModel.modelNodes ++ [ newNode ]
+                    , modelEdges = model.neutroModel.modelEdges
                     }
 
                 newNodeLabelPair =
@@ -822,10 +814,8 @@ update msg model =
                     defaultEdgeForm
 
                 newNeutroModelEdges =
-                    { nodes = model.neutroModel.nodes
-                    , edges = model.neutroModel.edges ++ [ newEdge ]
-                    , simNodes = model.neutroModel.simNodes
-                    , targetNodes = model.neutroModel.targetNodes
+                    { modelNodes = model.neutroModel.modelNodes
+                    , modelEdges = model.neutroModel.modelEdges ++ [ newEdge ]
                     }
 
                 newTransmitter =
@@ -895,7 +885,9 @@ update msg model =
             let
                 -- model1 (before sim) → model2 (after sim)
                 simulatedNodeId =
-                    model.simulationForm.nodeId
+                    model.simulationForm.simLabel
+                        |> String.toInt
+                        |> Maybe.withDefault 0
 
                 nodeToUpdate =
                     List.filter (\n -> n.nodeId == simulatedNodeId) model.nodes
@@ -904,11 +896,17 @@ update msg model =
                     List.filter (\n -> n.nodeId /= simulatedNodeId) model.nodes
 
                 -- node
-                updatedNodes =
+                updatedNodesFromSim =
                     case List.head nodeToUpdate of
                         Just n ->
                             -- updated nodes
-                            { n | state = "Sim" } :: nodesAllButSim
+                            { n
+                                | state = "Sim"
+                                , truth = neutroNumberCheck model.simulationForm.truth
+                                , indeterminacy = neutroNumberCheck model.simulationForm.indeterminacy
+                                , falsehood = neutroNumberCheck model.simulationForm.falsehood
+                            }
+                                :: nodesAllButSim
 
                         Nothing ->
                             model.nodes
@@ -943,16 +941,14 @@ update msg model =
                     defaultSimulationForm
 
                 newNeutroModelSimNodes =
-                    { nodes = model.neutroModel.nodes
-                    , edges = model.neutroModel.edges
-                    , simNodes = model.neutroModel.simNodes ++ [ newSimulationNode ]
-                    , targetNodes = model.neutroModel.targetNodes
+                    { modelNodes = updatedNodesFromSim
+                    , modelEdges = model.neutroModel.modelEdges
                     }
             in
             ( { model
                 | simulationForm = newSimulationForm
                 , simulatedNodes = model.simulatedNodes ++ [ newSimulationNode ]
-                , nodes = updatedNodes
+                , nodes = updatedNodesFromSim
                 , neutroModel = newNeutroModelSimNodes
                 , disableRunButton = runBtnToggle
                 , disableDeleteButton = deleteBtnToggle
@@ -963,6 +959,28 @@ update msg model =
 
         AddTargetNode ->
             let
+                -- model1 (before sim) → model2 (after sim)
+                targetedNodeId =
+                    model.targetNodeForm.targetNodeLabel
+                        |> String.toInt
+                        |> Maybe.withDefault 0
+
+                nodeToUpdate =
+                    List.filter (\n -> n.nodeId == targetedNodeId) model.nodes
+
+                nodesAllButTarget =
+                    List.filter (\n -> n.nodeId /= targetedNodeId) model.nodes
+
+                -- node
+                updatedNodesFromTarget =
+                    case List.head nodeToUpdate of
+                        Just n ->
+                            -- updated nodes
+                            { n | state = "Tar" } :: nodesAllButTarget
+
+                        Nothing ->
+                            model.nodes
+
                 newTargetNode =
                     let
                         newTargetNodeId =
@@ -977,19 +995,14 @@ update msg model =
                     defaultTargetNodeForm
 
                 newNeutroModelTargetNodes =
-                    let
-                        newTargetNodeNeutroModel =
-                            model.neutroModel.targetNodes ++ [ newTargetNode ]
-                    in
-                    { nodes = model.neutroModel.nodes
-                    , edges = model.neutroModel.edges
-                    , simNodes = model.neutroModel.simNodes
-                    , targetNodes = newTargetNodeNeutroModel
+                    { modelNodes = updatedNodesFromTarget
+                    , modelEdges = model.neutroModel.modelEdges
                     }
             in
             ( { model
                 | targetNodeForm = newTargetNodeForm
                 , targetNodes = model.targetNodes ++ [ newTargetNode ]
+                , nodes = updatedNodesFromTarget
                 , neutroModel = newNeutroModelTargetNodes
                 , disableRunButton = runBtnToggle
                 , disableDeleteButton = deleteBtnToggle
@@ -1001,10 +1014,8 @@ update msg model =
         DeleteNode nodeId ->
             let
                 newNeutroModelNodesDeleted =
-                    { nodes = List.filter (\n -> n.nodeId /= nodeId) model.neutroModel.nodes
-                    , edges = model.neutroModel.edges
-                    , simNodes = model.neutroModel.simNodes
-                    , targetNodes = model.neutroModel.targetNodes
+                    { modelNodes = List.filter (\n -> n.nodeId /= nodeId) model.neutroModel.modelNodes
+                    , modelEdges = model.neutroModel.modelEdges
                     }
 
                 indexToRemove =
@@ -1023,51 +1034,13 @@ update msg model =
         DeleteEdge edgeId ->
             let
                 newNeutroModelEdgesDeleted =
-                    { nodes = model.neutroModel.nodes
-                    , edges = List.filter (\n -> n.edgeId /= edgeId) model.neutroModel.edges
-                    , simNodes = model.neutroModel.simNodes
-                    , targetNodes = model.neutroModel.targetNodes
+                    { modelNodes = model.neutroModel.modelNodes
+                    , modelEdges = List.filter (\n -> n.edgeId /= edgeId) model.neutroModel.modelEdges
                     }
             in
             ( { model
                 | edges = List.filter (\n -> n.edgeId /= edgeId) model.edges
                 , neutroModel = newNeutroModelEdgesDeleted
-                , disableRunButton = runBtnToggle
-                , disableDeleteButton = deleteBtnToggle
-              }
-            , Cmd.none
-            )
-
-        DeleteSimNode simNodeId ->
-            let
-                newNeutroModelSimNodesDeleted =
-                    { nodes = model.neutroModel.nodes
-                    , edges = model.neutroModel.edges
-                    , simNodes = List.filter (\n -> n.nodeId /= simNodeId) model.neutroModel.simNodes
-                    , targetNodes = model.neutroModel.targetNodes
-                    }
-            in
-            ( { model
-                | simulatedNodes = List.filter (\n -> n.nodeId /= simNodeId) model.simulatedNodes
-                , neutroModel = newNeutroModelSimNodesDeleted
-                , disableRunButton = runBtnToggle
-                , disableDeleteButton = deleteBtnToggle
-              }
-            , Cmd.none
-            )
-
-        DeleteTargetNode targetNodeId ->
-            let
-                newNeutroModelTargetDeleted =
-                    { nodes = model.neutroModel.nodes
-                    , edges = model.neutroModel.edges
-                    , simNodes = model.neutroModel.simNodes
-                    , targetNodes = List.filter (\n -> n.targetNodeId /= targetNodeId) model.neutroModel.targetNodes
-                    }
-            in
-            ( { model
-                | targetNodes = List.filter (\n -> n.targetNodeId /= targetNodeId) model.targetNodes
-                , neutroModel = newNeutroModelTargetDeleted
                 , disableRunButton = runBtnToggle
                 , disableDeleteButton = deleteBtnToggle
               }
@@ -1095,6 +1068,8 @@ update msg model =
                 , cnScore = 0.0
                 , complexityScore = 0.0
                 , densityScore = 0.0
+                , simulationResult = []
+                , neutroModel = defaultNeutroModel
               }
             , Cmd.none
             )
@@ -1817,8 +1792,9 @@ viewCurrentState model =
         [ viewKpiTable "KPIs" model
         , viewNodeTable "Nodes" viewNodes model.nodes model
         , viewEdgeTable "Edges" viewEdges model.edges model
-        , viewSimTable "Simulation" viewSimulatedNodes model.simulatedNodes model
-        , viewTargetTable "Target" viewTargetNodes model.targetNodes model
+
+        --, viewSimTable "Simulation" viewSimulatedNodes model.simulatedNodes model
+        --, viewTargetTable "Target" viewTargetNodes model.targetNodes model
         ]
 
 
@@ -1926,73 +1902,71 @@ viewEdge edge =
         ]
 
 
-viewSimulatedNodes : List NeutroNode -> Html Msg
-viewSimulatedNodes simulatedNodes =
-    table
-        [ class "table" ]
-        (tr
-            [ class "border-bottom border-secondary" ]
-            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
-            , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
-            , td [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
-            , td [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
-            , td [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
-            , td [ class "tb-header-label text-white text-right" ] [ text "" ]
-            ]
-            :: List.map viewSimulatedNode simulatedNodes
-        )
 
-
-viewSimulatedNode : NeutroNode -> Html Msg
-viewSimulatedNode simulatedNode =
-    tr []
-        [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text simulatedNode.label ]
-        , td [ class "tb-header-label text-white text-center border-0" ] [ text "-" ]
-        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.truth) ]
-        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.indeterminacy) ]
-        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.falsehood) ]
-        , td [ class "tb-header-label text-white align-middle text-right border-0" ]
-            [ a
-                [ class "tb-header-label text-danger font-weight-bold"
-                , type_ "button"
-                , onClick (DeleteSimNode simulatedNode.nodeId)
-                ]
-                [ text "X" ]
-            ]
-        ]
-
-
-viewTargetNodes : List TargetNode -> Html Msg
-viewTargetNodes targetNodes =
-    table
-        [ class "table" ]
-        (tr
-            [ class "border-bottom border-secondary" ]
-            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
-            , td [ class "tb-header-label text-white text-right" ] [ text "" ]
-            ]
-            :: List.map viewTargetNode targetNodes
-        )
-
-
-viewTargetNode : TargetNode -> Html Msg
-viewTargetNode targetNode =
-    tr []
-        [ td
-            [ class "tb-header-label text-white align-middle text-left border-0" ]
-            [ text targetNode.targetNodeLabel ]
-        , td [ class "tb-header-label text-white align-middle text-right border-0" ]
-            [ a
-                [ class "tb-header-label text-danger font-weight-bold"
-                , type_ "button"
-                , onClick (DeleteTargetNode targetNode.targetNodeId)
-                ]
-                [ text "X" ]
-            ]
-        ]
-
-
-
+--viewSimulatedNodes : List NeutroNode -> Html Msg
+--viewSimulatedNodes simulatedNodes =
+--    table
+--        [ class "table" ]
+--        (tr
+--            [ class "border-bottom border-secondary" ]
+--            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
+--            , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
+--            , td [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
+--            , td [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
+--            , td [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
+--            , td [ class "tb-header-label text-white text-right" ] [ text "" ]
+--            ]
+--            :: List.map viewSimulatedNode simulatedNodes
+--        )
+--
+--
+--viewSimulatedNode : NeutroNode -> Html Msg
+--viewSimulatedNode simulatedNode =
+--    tr []
+--        [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text simulatedNode.label ]
+--        , td [ class "tb-header-label text-white text-center border-0" ] [ text "-" ]
+--        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.truth) ]
+--        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.indeterminacy) ]
+--        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.falsehood) ]
+--        , td [ class "tb-header-label text-white align-middle text-right border-0" ]
+--            [ a
+--                [ class "tb-header-label text-danger font-weight-bold"
+--                , type_ "button"
+--                , onClick (DeleteSimNode simulatedNode.nodeId)
+--                ]
+--                [ text "X" ]
+--            ]
+--        ]
+--
+--
+--viewTargetNodes : List TargetNode -> Html Msg
+--viewTargetNodes targetNodes =
+--    table
+--        [ class "table" ]
+--        (tr
+--            [ class "border-bottom border-secondary" ]
+--            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
+--            , td [ class "tb-header-label text-white text-right" ] [ text "" ]
+--            ]
+--            :: List.map viewTargetNode targetNodes
+--        )
+--
+--
+--viewTargetNode : TargetNode -> Html Msg
+--viewTargetNode targetNode =
+--    tr []
+--        [ td
+--            [ class "tb-header-label text-white align-middle text-left border-0" ]
+--            [ text targetNode.targetNodeLabel ]
+--        , td [ class "tb-header-label text-white align-middle text-right border-0" ]
+--            [ a
+--                [ class "tb-header-label text-danger font-weight-bold"
+--                , type_ "button"
+--                , onClick (DeleteTargetNode targetNode.targetNodeId)
+--                ]
+--                [ text "X" ]
+--            ]
+--        ]
 -- SHARED COMPONENTS
 
 
@@ -2191,44 +2165,45 @@ viewEdgeTable title func nodes model =
         ]
 
 
-viewSimTable title func nodes model =
-    div [ class "m-0 w-100" ]
-        [ div
-            [ class "d-flex bg-dark w-100 m-0 border-bottom" ]
-            [ p
-                [ class "p-1 m-0 text-primary" ]
-                [ text title ]
-            , div
-                [ class "w-100 text-right text-primary pr-1"
-                , style "cursor" "pointer"
-                , onClick DisplaySimTable
-                ]
-                [ text "▼" ]
-            ]
-        , div
-            [ hidden model.simTableDisplay ]
-            [ func nodes ]
-        ]
 
-
-viewTargetTable title func nodes model =
-    div [ class "m-0 w-100" ]
-        [ div
-            [ class "d-flex bg-dark w-100 m-0 border-bottom" ]
-            [ p
-                [ class "p-1 m-0 text-primary" ]
-                [ text title ]
-            , div
-                [ class "w-100 text-right text-primary pr-1"
-                , style "cursor" "pointer"
-                , onClick DisplayTargetTable
-                ]
-                [ text "▼" ]
-            ]
-        , div
-            [ hidden model.targetTableDisplay ]
-            [ func nodes ]
-        ]
+--viewSimTable title func nodes model =
+--    div [ class "m-0 w-100" ]
+--        [ div
+--            [ class "d-flex bg-dark w-100 m-0 border-bottom" ]
+--            [ p
+--                [ class "p-1 m-0 text-primary" ]
+--                [ text title ]
+--            , div
+--                [ class "w-100 text-right text-primary pr-1"
+--                , style "cursor" "pointer"
+--                , onClick DisplaySimTable
+--                ]
+--                [ text "▼" ]
+--            ]
+--        , div
+--            [ hidden model.simTableDisplay ]
+--            [ func nodes ]
+--        ]
+--
+--
+--viewTargetTable title func nodes model =
+--    div [ class "m-0 w-100" ]
+--        [ div
+--            [ class "d-flex bg-dark w-100 m-0 border-bottom" ]
+--            [ p
+--                [ class "p-1 m-0 text-primary" ]
+--                [ text title ]
+--            , div
+--                [ class "w-100 text-right text-primary pr-1"
+--                , style "cursor" "pointer"
+--                , onClick DisplayTargetTable
+--                ]
+--                [ text "▼" ]
+--            ]
+--        , div
+--            [ hidden model.targetTableDisplay ]
+--            [ func nodes ]
+--        ]
 
 
 viewKpiTable title model =
