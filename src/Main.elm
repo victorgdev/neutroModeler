@@ -893,6 +893,26 @@ update msg model =
 
         AddSimNode ->
             let
+                -- model1 (before sim) → model2 (after sim)
+                simulatedNodeId =
+                    model.simulationForm.nodeId
+
+                nodeToUpdate =
+                    List.filter (\n -> n.nodeId == simulatedNodeId) model.nodes
+
+                nodesAllButSim =
+                    List.filter (\n -> n.nodeId /= simulatedNodeId) model.nodes
+
+                -- node
+                updatedNodes =
+                    case List.head nodeToUpdate of
+                        Just n ->
+                            -- updated nodes
+                            { n | state = "Sim" } :: nodesAllButSim
+
+                        Nothing ->
+                            model.nodes
+
                 newSimulationNode =
                     let
                         newSimNodeId =
@@ -932,6 +952,7 @@ update msg model =
             ( { model
                 | simulationForm = newSimulationForm
                 , simulatedNodes = model.simulatedNodes ++ [ newSimulationNode ]
+                , nodes = updatedNodes
                 , neutroModel = newNeutroModelSimNodes
                 , disableRunButton = runBtnToggle
                 , disableDeleteButton = deleteBtnToggle
