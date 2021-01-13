@@ -1549,10 +1549,15 @@ update msg model =
                         |> Decode.required "indeterminacy" float
                         |> Decode.required "falsehood" float
 
-                _ =
-                    Debug.log "test" (Decode.decodeValue (list decodeResultNode) val)
+                result =
+                    case Decode.decodeValue (list decodeResultNode) val of
+                        Ok v ->
+                            v
+
+                        Err _ ->
+                            model.simulationResult
             in
-            ( { model | simulationResult = model.simulationResult }
+            ( { model | simulationResult = Debug.log "result" result }
             , Cmd.none
             )
 
@@ -1638,9 +1643,7 @@ viewRightMenuBar model =
                 [ viewCurrentState model ]
             , div
                 [ hidden model.simStateTabDisplay ]
-                []
-
-            --[ viewResultNodesState model.simulationResult ]
+                [ viewResultNodesState model.simulationResult ]
             ]
         ]
 
@@ -1798,33 +1801,36 @@ viewCurrentState model =
         ]
 
 
+viewResultNodesState : NeutroResult -> Html Msg
+viewResultNodesState model =
+    table
+        [ class "table" ]
+        (tr
+            [ class "border-bottom border-secondary" ]
+            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
+            , td [ class "tb-header-label text-white text-center" ] [ text "State" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
+            , td [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
+            ]
+            :: List.map viewResultNode model
+        )
 
---
---viewResultNodesState : Decoder NeutroResult -> Html Msg
---viewResultNodesState model =
---    table
---        [ class "table" ]
---        (tr
---            [ class "border-bottom border-secondary" ]
---            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
---            , td [ class "tb-header-label text-white text-center" ] [ text "State" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
---            ]
---            :: List.map viewResultNode model
---        )
---
---
---viewResultNode : Decoder ResultNode -> Html Msg
---viewResultNode node =
---    tr []
---        [ td [ class "tb-header-label align-center text-white align-middle text-left border-0" ] [ text node ]
---        , td [ class "tb-header-label text-white text-center border-0" ] [ text node.state ]
---        , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.truth) ]
---        , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.indeterminacy) ]
---        , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ] [ text (String.fromFloat node.falsehood) ]
---        ]
+
+viewResultNode : ResultNode -> Html Msg
+viewResultNode node =
+    tr []
+        [ td [ class "tb-header-label align-center text-white align-middle text-left border-0" ]
+            [ text node.label ]
+        , td [ class "tb-header-label text-white text-center border-0" ]
+            [ text node.state ]
+        , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ]
+            [ text (String.fromFloat node.truth) ]
+        , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ]
+            [ text (String.fromFloat node.indeterminacy) ]
+        , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ]
+            [ text (String.fromFloat node.falsehood) ]
+        ]
 
 
 viewNodes : List NeutroNode -> Html Msg
