@@ -4,7 +4,7 @@ port module Main exposing (..)
    TODO
          Primary
              - Fix Ordinary Kpi function
-             - Implement InDegree & OutDegree DONE
+             - Implement constraint more than one of the same edge
              - Implement KPI update on single element(node, edge) deletion
              - Implement label pairs and list update on entire model and on single element(node, edge) deletion
              - JS code implementation
@@ -125,8 +125,6 @@ type alias Model =
     -- Tables
     , nodeTableDisplay : Bool
     , edgeTableDisplay : Bool
-    , simTableDisplay : Bool
-    , targetTableDisplay : Bool
     , currentStateTabDisplay : Bool
     , simStateTabDisplay : Bool
 
@@ -144,7 +142,6 @@ type alias Model =
     , densityScore : Float -- connections (edges) / (concepts (nodes) * (concepts (nodes) - 1)) ratio
 
     -- Ports testing
-    , draft : String
     , simulationResult : NeutroResult
     }
 
@@ -432,7 +429,6 @@ initModel =
     , simulationForm = defaultSimulationForm
     , targetNodeForm = defaultTargetNodeForm
     , nodeFormDisplay = True
-    , nodeTableDisplay = True
     , edgeFormDisplay = True
     , simFormDisplay = True
     , targetFormDisplay = True
@@ -444,9 +440,8 @@ initModel =
     , disableFormBtn = False
 
     -- Tables
-    , edgeTableDisplay = True
-    , simTableDisplay = True
-    , targetTableDisplay = True
+    , nodeTableDisplay = False
+    , edgeTableDisplay = False
     , currentStateTabDisplay = False
     , simStateTabDisplay = True
 
@@ -464,7 +459,6 @@ initModel =
     , densityScore = 0.0
 
     -- Ports
-    , draft = ""
     , simulationResult = []
     }
 
@@ -694,8 +688,6 @@ type Msg
       -- Tables
     | DisplayNodeTable
     | DisplayEdgeTable
-    | DisplaySimTable
-    | DisplayTargetTable
     | DisplayCurState
     | DisplaySimState
       -- Ports
@@ -968,9 +960,9 @@ update msg model =
                             case List.head nodeInDegreeToUpdate of
                                 Just n ->
                                     { n
-                                        | inDegree = model.nodeForm.inDegree + 1
+                                        | inDegree = n.inDegree + 1
                                         , linkState =
-                                            if model.nodeForm.outDegree > 0 then
+                                            if n.outDegree > 0 then
                                                 "Ord"
 
                                             else
@@ -1049,36 +1041,16 @@ update msg model =
 
                         newSimNodeFalsehood =
                             neutroNumberCheck model.simulationForm.falsehood
-
-                        newSimNodeInDegree =
-                            List.head (List.filter (\n -> n.nodeId == newSimNodeId) model.nodes)
-
-                        simNode =
-                            case newSimNodeInDegree of
-                                Just n ->
-                                    n
-
-                                Nothing ->
-                                    { nodeId = newSimNodeId
-                                    , label = newSimNodeLabel
-                                    , truth = newSimNodeTruth
-                                    , indeterminacy = newSimNodeIndeterminacy
-                                    , falsehood = newSimNodeFalsehood
-                                    , state = "Sim" -- check if needed
-                                    , linkState = ""
-                                    , inDegree = 0
-                                    , outDegree = 0
-                                    }
                     in
-                    { nodeId = simNode.nodeId
-                    , label = simNode.label
-                    , truth = simNode.truth
-                    , indeterminacy = simNode.indeterminacy
-                    , falsehood = simNode.falsehood
-                    , state = simNode.state
-                    , linkState = simNode.linkState
-                    , inDegree = simNode.inDegree
-                    , outDegree = simNode.outDegree
+                    { nodeId = newSimNodeId
+                    , label = newSimNodeLabel
+                    , truth = newSimNodeTruth
+                    , indeterminacy = newSimNodeIndeterminacy
+                    , falsehood = newSimNodeFalsehood
+                    , state = "Sim"
+                    , linkState = ""
+                    , inDegree = 0
+                    , outDegree = 0
                     }
 
                 newSimulationForm =
@@ -1232,7 +1204,6 @@ update msg model =
             in
             ( { model
                 | nodeForm = newNodeForm
-                , draft = model.nodeForm.label
                 , disableEdgeForm = enableEdgeForm
                 , disableSimForm = enableSimForm
                 , disableTargetForm = enableTargetForm
@@ -1333,8 +1304,12 @@ update msg model =
                             Just t ->
                                 { oldEdgeForm | from = Nid (Just t) newFrom }
 
+                toNode =
+                    nidToString model.edgeForm.to
+
+                -- TODO: create same edge constraint
                 edgeDirectionValidation =
-                    if newFrom == nidToString model.edgeForm.to then
+                    if newFrom == toNode then
                         True
 
                     else
@@ -1660,20 +1635,6 @@ update msg model =
             , Cmd.none
             )
 
-        DisplaySimTable ->
-            ( { model
-                | simTableDisplay = isToggled model.simTableDisplay
-              }
-            , Cmd.none
-            )
-
-        DisplayTargetTable ->
-            ( { model
-                | targetTableDisplay = isToggled model.targetTableDisplay
-              }
-            , Cmd.none
-            )
-
         Recv val ->
             let
                 decodeResultNode : Decoder ResultNode
@@ -1759,10 +1720,14 @@ viewGraphCanvas model =
         [ class "col-6 bg-dark text-white" ]
         [ svg
             [ viewBox 0 0 w h ]
-            [ g [ TypedSvg.Attributes.class [ "links" ] ] <|
+            [ g
+                [ TypedSvg.Attributes.class [ "links" ] ]
+              <|
                 List.map (linkElement (initGraph model)) <|
                     Graph.edges (initGraph model)
-            , g [ TypedSvg.Attributes.class [ "nodes" ] ] <|
+            , g
+                [ TypedSvg.Attributes.class [ "nodes" ] ]
+              <|
                 List.map nodeElement <|
                     Graph.nodes (initGraph model)
             ]
@@ -2038,10 +2003,22 @@ viewEdge nodes edge =
 
                 Nothing ->
                     String.fromInt edge.from
+
+        toNode =
+            List.filter (\n -> edge.to == n.nodeId) nodes
+                |> List.head
+
+        toNodeLabel =
+            case toNode of
+                Just n ->
+                    n.label
+
+                Nothing ->
+                    String.fromInt edge.to
     in
     tr []
         [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text fromNodeLabel ]
-        , td [ class "tb-header-label text-white align-middle text-center border-0" ] [ text (String.fromInt edge.to) ]
+        , td [ class "tb-header-label text-white align-middle text-center border-0" ] [ text toNodeLabel ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat edge.truth) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat edge.indeterminacy) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat edge.falsehood) ]
