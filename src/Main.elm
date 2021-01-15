@@ -1,37 +1,39 @@
 port module Main exposing (..)
 
 {-
-      TODOs
-   Primary
-             - Implement Ordinary Kpi function
-          Secondary
-             - Configure Labels to show the neutro number
+   TODO
+         Primary
+             - Fix Ordinary Kpi function
+             - Implement InDegree & OutDegree DONE
+             - Implement KPI update on single element(node, edge) deletion
+             - Implement label pairs and list update on entire model and on single element(node, edge) deletion
+             - JS code implementation
+         Secondary
+             - Implement fixed size table height for nodes & edges table, and implement a scrollbar
              - Implement line with arrows
              - Implement Force Directed NeutroGraph interactive graph drag and drop
              - Tooltip - tips and explanations modals
              - Icons for the buttons
              - Change the color of the node in graph and table to ID simNode and targetNode
 
-            Set storage port example
+         Set local storage port example code
+         --------------------------------------------------------------------------------------
+         , update = updateWithStorage
+         , subscriptions = \_ -> Sub.none
+         }
 
-            , update = updateWithStorage
-            , subscriptions = \_ -> Sub.none
-            }
+         port setStorage : List NeutroNode -> Cmd msg
 
-
-            port setStorage : List NeutroNode -> Cmd msg
-
-
-            updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
-            updateWithStorage msg model =
-            let
-            ( newModel, cmds ) =
-                update msg model
-            in
-            ( newModel
-            , Cmd.batch [ setStorage newModel.nodes, cmds ]
-            )
-
+         updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
+         updateWithStorage msg model =
+         let
+         ( newModel, cmds ) =
+             update msg model
+         in
+         ( newModel
+         , Cmd.batch [ setStorage newModel.nodes, cmds ]
+         )
+         --------------------------------------------------------------------------------------
 -}
 
 import Browser
@@ -178,6 +180,8 @@ type alias NeutroNode =
     , truth : Float
     , indeterminacy : Float
     , falsehood : Float
+    , inDegree : Int
+    , outDegree : Int
     }
 
 
@@ -191,17 +195,6 @@ type alias NeutroEdge =
     , indeterminacy : Float
     , falsehood : Float
     }
-
-
-
---type alias SimulatedNode =
---    { simNodeId : NodeId
---    , simNodeLabel : String
---    , simNodeTruth : Float
---    , simNodeIndeterminacy : Float
---    , simNodeFalsehood : Float
---    , state : String
---    }
 
 
 type alias TargetNode =
@@ -253,6 +246,8 @@ type alias NodeForm =
     , hideTable : Bool
     , state : String
     , linkState : String
+    , inDegree : Int
+    , outDegree : Int
     }
 
 
@@ -277,6 +272,8 @@ type alias SimulationForm =
     , hideTable : Bool
     , state : String
     , linkState : String
+    , inDegree : Int
+    , outDegree : Int
     }
 
 
@@ -322,6 +319,8 @@ defaultNodeForm =
     , hideTable = True
     , state = "Reg"
     , linkState = ""
+    , inDegree = 0
+    , outDegree = 0
     }
 
 
@@ -348,6 +347,8 @@ defaultSimulationForm =
     , hideTable = True
     , state = "Reg"
     , linkState = ""
+    , inDegree = 0
+    , outDegree = 0
     }
 
 
@@ -358,6 +359,58 @@ defaultTargetNodeForm =
     , hideForm = True
     , state = "Tar"
     }
+
+
+dummyEdges =
+    [ { edgeId = 0
+      , from = 0
+      , to = 1
+      , truth = 1
+      , indeterminacy = 1
+      , falsehood = 1
+      }
+    , { edgeId = 1
+      , from = 0
+      , to = 2
+      , truth = 1
+      , indeterminacy = 1
+      , falsehood = 1
+      }
+    ]
+
+
+dummyNodes =
+    [ { nodeId = 0
+      , label = "a"
+      , truth = 1
+      , indeterminacy = 1
+      , falsehood = 1
+      , state = "Reg"
+      , linkState = "Tra"
+      , inDegree = 0
+      , outDegree = 2
+      }
+    , { nodeId = 1
+      , label = "b"
+      , truth = 1
+      , indeterminacy = 1
+      , falsehood = 1
+      , state = "Reg"
+      , linkState = "Rec"
+      , inDegree = 1
+      , outDegree = 0
+      }
+    , { nodeId = 2
+      , label = "c"
+      , truth = 1
+      , indeterminacy = 1
+      , falsehood = 1
+      , state = "Reg"
+      , linkState = "Rec"
+      , inDegree = 1
+      , outDegree = 0
+      }
+    ]
 
 
 initModel : Model
@@ -722,7 +775,13 @@ update msg model =
             --        }
             --in
             ----( model, sendModel <| mapNodesToJSNodes model.neutroModel )
-            ( model, sendModel model.neutroModel )
+            let
+                finalNeutroModel =
+                    { modelNodes = model.nodes
+                    , modelEdges = model.edges
+                    }
+            in
+            ( model, sendModel finalNeutroModel )
 
         AddNode ->
             let
@@ -732,7 +791,6 @@ update msg model =
                 newNode =
                     let
                         newNodeLabel =
-                            -- TODO: Create validation to prevent same label nodes
                             model.nodeForm.label
 
                         newTruth =
@@ -743,6 +801,12 @@ update msg model =
 
                         newFalsehood =
                             neutroNumberCheck model.nodeForm.falsehood
+
+                        newInDegree =
+                            model.nodeForm.inDegree
+
+                        newOutDegree =
+                            model.nodeForm.outDegree
                     in
                     { nodeId = newNodeId
                     , label = newNodeLabel
@@ -751,6 +815,8 @@ update msg model =
                     , falsehood = newFalsehood
                     , state = "Reg"
                     , linkState = ""
+                    , inDegree = newInDegree
+                    , outDegree = newOutDegree
                     }
 
                 newForm =
@@ -860,6 +926,61 @@ update msg model =
 
                 newNumReceivers =
                     List.length model.listReceivers + 1
+
+                -- OutDegree Update
+                updatedNodeDegreeAndLinkState =
+                    let
+                        ---- InDegree Update
+                        --updatedNodeInDegree =
+                        --    let
+                        --        receiverNodeId =
+                        --            edgeFromToCheck model.edgeForm.to
+                        --
+                        --        nodeInDegreeToUpdate =
+                        --            List.filter (\n -> n.nodeId == receiverNodeId) model.nodes
+                        --
+                        --        nodesAllButReceiver =
+                        --            List.filter (\n -> n.nodeId /= receiverNodeId) model.nodes
+                        --    in
+                        --    case List.head nodeInDegreeToUpdate of
+                        --        Just n ->
+                        --            { n
+                        --                | inDegree = model.nodeForm.inDegree + 1
+                        --                , linkState =
+                        --                    if model.nodeForm.outDegree > 0 then
+                        --                        "Ord"
+                        --
+                        --                    else
+                        --                        "Rec"
+                        --            }
+                        --                :: nodesAllButReceiver
+                        --
+                        --        Nothing ->
+                        --            model.nodes
+                        transmitterNodeId =
+                            edgeFromToCheck model.edgeForm.from
+
+                        nodeOutDegreeToUpdate =
+                            List.filter (\n -> n.nodeId == transmitterNodeId) model.nodes
+
+                        allNodesButTransmitter =
+                            List.filter (\n -> n.nodeId /= transmitterNodeId) model.nodes
+                    in
+                    case List.head nodeOutDegreeToUpdate of
+                        Just n ->
+                            { n
+                                | outDegree = n.outDegree + 1
+                                , linkState =
+                                    if n.inDegree > 0 then
+                                        "Ord"
+
+                                    else
+                                        "Tra"
+                            }
+                                :: allNodesButTransmitter
+
+                        Nothing ->
+                            model.nodes
             in
             ( { model
                 | edgeForm = newEdgeForm
@@ -877,13 +998,13 @@ update msg model =
                 , neutroModel = newNeutroModelEdges
                 , disableRunButton = runBtnToggle
                 , disableDeleteButton = deleteBtnToggle
+                , nodes = updatedNodeDegreeAndLinkState
               }
             , Cmd.none
             )
 
         AddSimNode ->
             let
-                -- model1 (before sim) → model2 (after sim)
                 simulatedNodeId =
                     model.simulationForm.simLabel
                         |> String.toInt
@@ -892,21 +1013,19 @@ update msg model =
                 nodeToUpdate =
                     List.filter (\n -> n.nodeId == simulatedNodeId) model.nodes
 
-                nodesAllButSim =
+                allNodesButSim =
                     List.filter (\n -> n.nodeId /= simulatedNodeId) model.nodes
 
-                -- node
-                updatedNodesFromSim =
+                updatedNodeFromSim =
                     case List.head nodeToUpdate of
                         Just n ->
-                            -- updated nodes
                             { n
                                 | state = "Sim"
                                 , truth = neutroNumberCheck model.simulationForm.truth
                                 , indeterminacy = neutroNumberCheck model.simulationForm.indeterminacy
                                 , falsehood = neutroNumberCheck model.simulationForm.falsehood
                             }
-                                :: nodesAllButSim
+                                :: allNodesButSim
 
                         Nothing ->
                             model.nodes
@@ -914,7 +1033,9 @@ update msg model =
                 newSimulationNode =
                     let
                         newSimNodeId =
-                            List.length model.simulatedNodes
+                            model.simulationForm.simLabel
+                                |> String.toInt
+                                |> Maybe.withDefault 0
 
                         newSimNodeLabel =
                             model.simulationForm.simLabel
@@ -927,28 +1048,50 @@ update msg model =
 
                         newSimNodeFalsehood =
                             neutroNumberCheck model.simulationForm.falsehood
+
+                        newSimNodeInDegree =
+                            List.head (List.filter (\n -> n.nodeId == newSimNodeId) model.nodes)
+
+                        simNode =
+                            case newSimNodeInDegree of
+                                Just n ->
+                                    n
+
+                                Nothing ->
+                                    { nodeId = newSimNodeId
+                                    , label = newSimNodeLabel
+                                    , truth = newSimNodeTruth
+                                    , indeterminacy = newSimNodeIndeterminacy
+                                    , falsehood = newSimNodeFalsehood
+                                    , state = "Sim" -- check if needed
+                                    , linkState = ""
+                                    , inDegree = 0
+                                    , outDegree = 0
+                                    }
                     in
-                    { nodeId = newSimNodeId
-                    , label = newSimNodeLabel
-                    , truth = newSimNodeTruth
-                    , indeterminacy = newSimNodeIndeterminacy
-                    , falsehood = newSimNodeFalsehood
-                    , state = "Sim" -- check if needed
-                    , linkState = ""
+                    { nodeId = simNode.nodeId
+                    , label = simNode.label
+                    , truth = simNode.truth
+                    , indeterminacy = simNode.indeterminacy
+                    , falsehood = simNode.falsehood
+                    , state = simNode.state
+                    , linkState = simNode.linkState
+                    , inDegree = simNode.inDegree
+                    , outDegree = simNode.outDegree
                     }
 
                 newSimulationForm =
                     defaultSimulationForm
 
                 newNeutroModelSimNodes =
-                    { modelNodes = updatedNodesFromSim
+                    { modelNodes = updatedNodeFromSim
                     , modelEdges = model.neutroModel.modelEdges
                     }
             in
             ( { model
                 | simulationForm = newSimulationForm
                 , simulatedNodes = model.simulatedNodes ++ [ newSimulationNode ]
-                , nodes = updatedNodesFromSim
+                , nodes = updatedNodeFromSim
                 , neutroModel = newNeutroModelSimNodes
                 , disableRunButton = runBtnToggle
                 , disableDeleteButton = deleteBtnToggle
@@ -959,7 +1102,6 @@ update msg model =
 
         AddTargetNode ->
             let
-                -- model1 (before sim) → model2 (after sim)
                 targetedNodeId =
                     model.targetNodeForm.targetNodeLabel
                         |> String.toInt
@@ -968,15 +1110,13 @@ update msg model =
                 nodeToUpdate =
                     List.filter (\n -> n.nodeId == targetedNodeId) model.nodes
 
-                nodesAllButTarget =
+                allNodesButTarget =
                     List.filter (\n -> n.nodeId /= targetedNodeId) model.nodes
 
-                -- node
-                updatedNodesFromTarget =
+                updatedNodeFromTarget =
                     case List.head nodeToUpdate of
                         Just n ->
-                            -- updated nodes
-                            { n | state = "Tar" } :: nodesAllButTarget
+                            { n | state = "Tar" } :: allNodesButTarget
 
                         Nothing ->
                             model.nodes
@@ -995,14 +1135,14 @@ update msg model =
                     defaultTargetNodeForm
 
                 newNeutroModelTargetNodes =
-                    { modelNodes = updatedNodesFromTarget
+                    { modelNodes = updatedNodeFromTarget
                     , modelEdges = model.neutroModel.modelEdges
                     }
             in
             ( { model
                 | targetNodeForm = newTargetNodeForm
                 , targetNodes = model.targetNodes ++ [ newTargetNode ]
-                , nodes = updatedNodesFromTarget
+                , nodes = updatedNodeFromTarget
                 , neutroModel = newNeutroModelTargetNodes
                 , disableRunButton = runBtnToggle
                 , disableDeleteButton = deleteBtnToggle
@@ -2145,6 +2285,7 @@ viewNodeTable title func nodes model =
         ]
 
 
+viewEdgeTable : String.String -> (c -> Html Msg) -> c -> { a | edgeTableDisplay : Bool } -> Html Msg
 viewEdgeTable title func nodes model =
     div [ class "m-0 w-100" ]
         [ div
