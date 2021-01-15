@@ -1931,7 +1931,7 @@ viewCurrentState model =
         [ class "bg-dark w-100 mt-4" ]
         [ viewKpiTable "KPIs" model
         , viewNodeTable "Nodes" viewNodes model.nodes model
-        , viewEdgeTable "Edges" viewEdges model.edges model
+        , viewEdgeTable "Edges" (viewEdges model) model
 
         --, viewSimTable "Simulation" viewSimulatedNodes model.simulatedNodes model
         --, viewTargetTable "Target" viewTargetNodes model.targetNodes model
@@ -2006,8 +2006,8 @@ viewNode node =
         ]
 
 
-viewEdges : List NeutroEdge -> Html Msg
-viewEdges edges =
+viewEdges : Model -> Html Msg
+viewEdges model =
     table
         [ class "table" ]
         (tr
@@ -2019,14 +2019,27 @@ viewEdges edges =
             , td [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
             , td [ class "tb-header-label text-white text-right" ] [ text "" ]
             ]
-            :: List.map viewEdge edges
+            :: List.map (viewEdge model.nodes) model.edges
         )
 
 
-viewEdge : NeutroEdge -> Html Msg
-viewEdge edge =
+viewEdge : List NeutroNode -> NeutroEdge -> Html Msg
+viewEdge nodes edge =
+    let
+        fromNode =
+            List.filter (\n -> edge.from == n.nodeId) nodes
+                |> List.head
+
+        fromNodeLabel =
+            case fromNode of
+                Just n ->
+                    n.label
+
+                Nothing ->
+                    String.fromInt edge.from
+    in
     tr []
-        [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text (String.fromInt edge.from) ]
+        [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text fromNodeLabel ]
         , td [ class "tb-header-label text-white align-middle text-center border-0" ] [ text (String.fromInt edge.to) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat edge.truth) ]
         , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat edge.indeterminacy) ]
@@ -2285,8 +2298,8 @@ viewNodeTable title func nodes model =
         ]
 
 
-viewEdgeTable : String.String -> (c -> Html Msg) -> c -> { a | edgeTableDisplay : Bool } -> Html Msg
-viewEdgeTable title func nodes model =
+viewEdgeTable : String -> Html Msg -> { a | edgeTableDisplay : Bool } -> Html Msg
+viewEdgeTable title edges model =
     div [ class "m-0 w-100" ]
         [ div
             [ class "d-flex bg-dark w-100 m-0 border-bottom" ]
@@ -2302,7 +2315,7 @@ viewEdgeTable title func nodes model =
             ]
         , div
             [ hidden model.edgeTableDisplay ]
-            [ func nodes ]
+            [ edges ]
         ]
 
 
