@@ -927,60 +927,61 @@ update msg model =
                 newNumReceivers =
                     List.length model.listReceivers + 1
 
-                -- OutDegree Update
                 updatedNodeDegreeAndLinkState =
                     let
-                        ---- InDegree Update
-                        --updatedNodeInDegree =
-                        --    let
-                        --        receiverNodeId =
-                        --            edgeFromToCheck model.edgeForm.to
-                        --
-                        --        nodeInDegreeToUpdate =
-                        --            List.filter (\n -> n.nodeId == receiverNodeId) model.nodes
-                        --
-                        --        nodesAllButReceiver =
-                        --            List.filter (\n -> n.nodeId /= receiverNodeId) model.nodes
-                        --    in
-                        --    case List.head nodeInDegreeToUpdate of
-                        --        Just n ->
-                        --            { n
-                        --                | inDegree = model.nodeForm.inDegree + 1
-                        --                , linkState =
-                        --                    if model.nodeForm.outDegree > 0 then
-                        --                        "Ord"
-                        --
-                        --                    else
-                        --                        "Rec"
-                        --            }
-                        --                :: nodesAllButReceiver
-                        --
-                        --        Nothing ->
-                        --            model.nodes
                         transmitterNodeId =
                             edgeFromToCheck model.edgeForm.from
+
+                        receiverNodeId =
+                            edgeFromToCheck model.edgeForm.to
 
                         nodeOutDegreeToUpdate =
                             List.filter (\n -> n.nodeId == transmitterNodeId) model.nodes
 
+                        nodeInDegreeToUpdate =
+                            List.filter (\n -> n.nodeId == receiverNodeId) model.nodes
+
                         allNodesButTransmitter =
                             List.filter (\n -> n.nodeId /= transmitterNodeId) model.nodes
+
+                        outNodes =
+                            case List.head nodeOutDegreeToUpdate of
+                                Just n ->
+                                    { n
+                                        | outDegree = n.outDegree + 1
+                                        , linkState =
+                                            if n.inDegree > 0 then
+                                                "Ord"
+
+                                            else
+                                                "Tra"
+                                    }
+                                        :: allNodesButTransmitter
+
+                                Nothing ->
+                                    model.nodes
+
+                        allNodesButReceiverWithUpdatedOutNodes =
+                            List.filter (\n -> n.nodeId /= receiverNodeId) outNodes
+
+                        updatedNodes =
+                            case List.head nodeInDegreeToUpdate of
+                                Just n ->
+                                    { n
+                                        | inDegree = model.nodeForm.inDegree + 1
+                                        , linkState =
+                                            if model.nodeForm.outDegree > 0 then
+                                                "Ord"
+
+                                            else
+                                                "Rec"
+                                    }
+                                        :: allNodesButReceiverWithUpdatedOutNodes
+
+                                Nothing ->
+                                    model.nodes
                     in
-                    case List.head nodeOutDegreeToUpdate of
-                        Just n ->
-                            { n
-                                | outDegree = n.outDegree + 1
-                                , linkState =
-                                    if n.inDegree > 0 then
-                                        "Ord"
-
-                                    else
-                                        "Tra"
-                            }
-                                :: allNodesButTransmitter
-
-                        Nothing ->
-                            model.nodes
+                    updatedNodes
             in
             ( { model
                 | edgeForm = newEdgeForm
