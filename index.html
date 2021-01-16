@@ -11,35 +11,45 @@
 <body>
    <div id="elm-app"></div>
 </body>
-<script type="text/javascript">
+<script>
    // Start the Elm application.
-   var app = Elm.Main.init({
-      node: document.getElementById('elm-app')
-   });
+   var app = Elm.Main.init({ node: document.getElementById('elm-app') });
+   var neutroCalculator, resultData = [];
 
    app.ports.sendModel.subscribe(function(message) {
-       computation(message)
+      doCalculate(message)
    });
 
-   function computation(dataFromElm) {
-      console.log("Data log from elm", dataFromElm);
+   var Module = {
+      onRuntimeInitialized: function() {
+         neutroCalculator = new Module.NeutroCalculator("hello");
+      }
+   };
 
-      // ... come heavy computation
-      var nodes = dataFromElm.nodes;
-      var edges = dataFromElm.edges;
-      var simNodes = dataFromElm.simNodes;
-      var targetNodes = dataFromElm.targetNodes;
+   function doCalculate(dataFromElm){
+      neutroCalculator.delete();
+      neutroCalculator = new Module.NeutroCalculator("hello");
 
+      var nodes = dataFromElm.modelNodes;
+      var edges = dataFromElm.modelEdges;
 
+      for(var i = 0; i < nodes.length; i++)
+      {
+         neutroCalculator.addNode(nodes[i]);
+      }
 
-     const resultData =
-        [
-           {nodeId: 1, label: "A", state: "Reg", truth: 0.5, indeterminacy: 0.5, falsehood: 0.5 },
-           {nodeId: 2, label: "B", state: "Sim", truth: 0.6, indeterminacy: 0.6, falsehood: 0.6 },
-           {nodeId: 3, label: "C", state: "Tar", truth: 0.7, indeterminacy: 0.7, falsehood: 0.7 },
-        ]
+      for(var i = 0; i < edges.length; i++)
+      {
+         neutroCalculator.addEdge(edges[i]);
+      }
 
-     app.ports.messageReceiver.send(resultData);
+      neutroCalculator.simulate();
+
+      for(var i = 0; i < nodes.length; i++) {
+         resultData.push(neutroCalculator.getSimulationResult(i));
+      }
+      console.log(resultData);
+      app.ports.messageReceiver.send(resultData);
    }
 
 
@@ -51,4 +61,5 @@
    //    localStorage.setItem('elm-app', JSON.stringify(state));
    // });
 </script>
+<script type="text/javascript" src="neutro1.js"></script>
 </html>
