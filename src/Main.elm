@@ -48,6 +48,7 @@ import Json.Decode as Decode exposing (Decoder, Value, float, int, list, string)
 import Json.Decode.Pipeline as Decode
 import List exposing (range)
 import List.Extra
+import Round exposing (ceiling)
 import String exposing (concat)
 import Tuple exposing (first, pair, second)
 import TypedSvg exposing (circle, g, line, polygon, svg)
@@ -360,51 +361,116 @@ defaultTargetNodeForm =
 
 dummyEdges =
     [ { edgeId = 0
-      , from = 0
-      , to = 1
-      , truth = 1
-      , indeterminacy = 1
-      , falsehood = 1
+      , from = 1
+      , to = 0
+      , truth = 0.7
+      , indeterminacy = 0.1
+      , falsehood = 0.1
       }
     , { edgeId = 1
-      , from = 0
-      , to = 2
-      , truth = 1
-      , indeterminacy = 1
-      , falsehood = 1
+      , from = 2
+      , to = 1
+      , truth = 0.6
+      , indeterminacy = 0.1
+      , falsehood = 0.2
+      }
+    , { edgeId = 2
+      , from = 2
+      , to = 3
+      , truth = 0.5
+      , indeterminacy = 0.1
+      , falsehood = 0.5
+      }
+    , { edgeId = 3
+      , from = 4
+      , to = 1
+      , truth = 0.3
+      , indeterminacy = 0.1
+      , falsehood = 0.7
+      }
+    , { edgeId = 4
+      , from = 4
+      , to = 5
+      , truth = 0.7
+      , indeterminacy = 0.1
+      , falsehood = 0.4
+      }
+    , { edgeId = 5
+      , from = 1
+      , to = 5
+      , truth = 0.7
+      , indeterminacy = 0.1
+      , falsehood = 0.4
+      }
+    , { edgeId = 6
+      , from = 3
+      , to = 1
+      , truth = 0.7
+      , indeterminacy = 0.1
+      , falsehood = 0.4
       }
     ]
 
 
 dummyNodes =
     [ { nodeId = 0
-      , label = "a"
-      , truth = 1
-      , indeterminacy = 1
-      , falsehood = 1
+      , label = "A"
+      , truth = 0.8
+      , indeterminacy = 0.1
+      , falsehood = 0.1
+      , state = "Tar"
+      , linkState = "Rec"
+      , inDegree = 1
+      , outDegree = 0
+      }
+    , { nodeId = 1
+      , label = "B"
+      , truth = 0.8
+      , indeterminacy = 0.1
+      , falsehood = 0.3
+      , state = "Reg"
+      , linkState = "Ord"
+      , inDegree = 3
+      , outDegree = 2
+      }
+    , { nodeId = 2
+      , label = "C"
+      , truth = 0.7
+      , indeterminacy = 0.1
+      , falsehood = 0.1
+      , state = "Sim"
+      , linkState = "Tra"
+      , inDegree = 0
+      , outDegree = 2
+      }
+    , { nodeId = 3
+      , label = "D"
+      , truth = 0.8
+      , indeterminacy = 0.2
+      , falsehood = 0.1
+      , state = "Reg"
+      , linkState = "Ord"
+      , inDegree = 1
+      , outDegree = 1
+      }
+    , { nodeId = 4
+      , label = "E"
+      , truth = 0.7
+      , indeterminacy = 0.4
+      , falsehood = 0.2
       , state = "Reg"
       , linkState = "Tra"
       , inDegree = 0
       , outDegree = 2
       }
-    , { nodeId = 1
-      , label = "b"
-      , truth = 1
-      , indeterminacy = 1
-      , falsehood = 1
+    , { nodeId = 5
+      , label = "F"
+      , truth = 0.8
+      , indeterminacy = 0.3
+      , falsehood = 0.4
       , state = "Reg"
       , linkState = "Rec"
-      , inDegree = 1
-      , outDegree = 0
-      }
-    , { nodeId = 2
-      , label = "c"
-      , truth = 1
-      , indeterminacy = 1
-      , falsehood = 1
-      , state = "Reg"
-      , linkState = "Rec"
-      , inDegree = 1
+      , inDegree = 2
       , outDegree = 0
       }
     ]
@@ -883,32 +949,97 @@ update msg model =
                     edgeFromToCheck model.edgeForm.to
 
                 newListTransmitters =
-                    newTransmitter :: model.listTransmitters
+                    let
+                        nodeAlreadyExist =
+                            List.member newTransmitter model.listTransmitters
+                    in
+                    if nodeAlreadyExist == True then
+                        model.listTransmitters
+
+                    else
+                        newTransmitter :: model.listTransmitters
 
                 newListReceivers =
-                    newReceiver :: model.listReceivers
+                    let
+                        nodeAlreadyExist =
+                            List.member newReceiver model.listReceivers
+                    in
+                    if nodeAlreadyExist == True then
+                        model.listReceivers
 
-                newOrdinaryFromFrom =
-                    List.member newTransmitter model.listReceivers
-
-                newOrdinaryFromTo =
-                    List.member newReceiver model.listTransmitters
+                    else
+                        newReceiver :: model.listReceivers
 
                 newListOrdinaries =
-                    if newOrdinaryFromFrom == True && newOrdinaryFromTo == True then
+                    let
+                        fromNodeAlreadyListedOrdinary =
+                            List.member newTransmitter model.listReceivers
+
+                        toNodeAlreadyListedOrdinary =
+                            List.member newReceiver model.listReceivers
+
+                        filteredTransmitterNode =
+                            List.filter (\n -> newTransmitter == n.nodeId) model.nodes
+
+                        filteredReceiverNode =
+                            List.filter (\n -> newReceiver == n.nodeId) model.nodes
+
+                        receiverNode =
+                            case List.head filteredReceiverNode of
+                                Just n ->
+                                    n
+
+                                Nothing ->
+                                    { nodeId = 0
+                                    , label = "Error"
+                                    , truth = 0
+                                    , indeterminacy = 0
+                                    , falsehood = 0
+                                    , state = "Error"
+                                    , linkState = "Error"
+                                    , inDegree = 0
+                                    , outDegree = 0
+                                    }
+
+                        transmitterNode =
+                            case List.head filteredTransmitterNode of
+                                Just n ->
+                                    n
+
+                                Nothing ->
+                                    { nodeId = 0
+                                    , label = "Error"
+                                    , truth = 0
+                                    , indeterminacy = 0
+                                    , falsehood = 0
+                                    , state = "Error"
+                                    , linkState = "Error"
+                                    , inDegree = 0
+                                    , outDegree = 0
+                                    }
+                    in
+                    if List.length model.edges <= 1 || (fromNodeAlreadyListedOrdinary == True && toNodeAlreadyListedOrdinary == True) then
                         model.listOrdinaries
 
-                    else if newOrdinaryFromFrom == True && newOrdinaryFromTo == False then
-                        newReceiver :: model.listOrdinaries
+                    else if fromNodeAlreadyListedOrdinary == False && toNodeAlreadyListedOrdinary == True then
+                        if transmitterNode.linkState == "Ord" then
+                            model.listOrdinaries
 
-                    else if newOrdinaryFromFrom == False && newOrdinaryFromTo == True then
-                        newTransmitter :: model.listOrdinaries
+                        else
+                            newTransmitter :: model.listOrdinaries
+
+                    else if fromNodeAlreadyListedOrdinary == True && toNodeAlreadyListedOrdinary == False then
+                        if receiverNode.linkState == "Ord" then
+                            model.listOrdinaries
+
+                        else
+                            newReceiver :: model.listOrdinaries
 
                     else
                         List.append [ newTransmitter, newReceiver ] model.listOrdinaries
 
                 newNumOrdinary =
-                    List.length model.listOrdinaries
+                    List.length model.listOrdinaries + 1
 
                 newNumConnections =
                     List.length model.edges + 1
@@ -1655,7 +1786,7 @@ update msg model =
                         Err _ ->
                             model.simulationResult
             in
-            ( { model | simulationResult = Debug.log "result" result }
+            ( { model | simulationResult = Debug.log "Log From Elm: Result from JS-WASM" result }
             , Cmd.none
             )
 
@@ -1922,17 +2053,27 @@ viewResultNodesState model =
 
 viewResultNode : ResultNode -> Html Msg
 viewResultNode node =
+    let
+        truth =
+            Round.ceiling 2 node.truth
+
+        indeterminacy =
+            Round.ceiling 2 node.indeterminacy
+
+        falsehood =
+            Round.ceiling 2 node.falsehood
+    in
     tr []
         [ td [ class "tb-header-label align-center text-white align-middle text-left border-0" ]
             [ text node.label ]
         , td [ class "tb-header-label text-white text-center border-0" ]
             [ text node.state ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ]
-            [ text (String.fromFloat node.truth) ]
+            [ text truth ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ]
-            [ text (String.fromFloat node.indeterminacy) ]
+            [ text indeterminacy ]
         , td [ class "tb-header-label align-center text-white align-middle text-right border-0" ]
-            [ text (String.fromFloat node.falsehood) ]
+            [ text falsehood ]
         ]
 
 
