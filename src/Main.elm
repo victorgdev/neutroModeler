@@ -2,19 +2,21 @@ port module Main exposing (..)
 
 {-
    TODO
-         Primary
-             - Fix Ordinary Kpi function
-             - Implement constraint more than one of the same edge
-             - Implement KPI update on single element(node, edge) deletion
-             - Implement label pairs and list update on entire model and on single element(node, edge) deletion
-             - JS code implementation
-         Secondary
-             - Implement fixed size table height for nodes & edges table, and implement a scrollbar
-             - Implement line with arrows
-             - Implement Force Directed NeutroGraph interactive graph drag and drop
-             - Tooltip - tips and explanations modals
-             - Icons for the buttons
-             - Change the color of the node in graph and table to ID simNode and targetNode
+    Primary
+        - Fix Ordinary Kpi function
+        - Constraints to be implemented
+            - More than one of the same edge
+            - Ordinary nodes cannot be simulated
+        - Hide Simulation tab before run model
+        - Update KPI results, labels and label pairs lists when deleting single element(node, edge) and/or entire model
+        - Delete NeutroCalculator instance when deleting button is pressed (JS side)
+    Secondary
+        - Implement fixed size table height for nodes & edges table, and implement a scrollbar
+        - Implement line with arrows
+        - Implement Force Directed NeutroGraph interactive graph drag and drop
+        - Tooltip - tips and explanations modals
+        - Icons for the buttons
+        - Change the color of the node in graph and table to ID simNode and targetNode
 
          Set local storage port example code
          --------------------------------------------------------------------------------------
@@ -48,7 +50,7 @@ import Json.Decode as Decode exposing (Decoder, Value, float, int, list, string)
 import Json.Decode.Pipeline as Decode
 import List exposing (range)
 import List.Extra
-import Round exposing (ceiling)
+import Round
 import String exposing (concat)
 import Tuple exposing (first, pair, second)
 import TypedSvg exposing (circle, g, line, polygon, svg)
@@ -155,13 +157,6 @@ type alias NodeLabelPair =
     ( Int, String )
 
 
-
---type alias NodesForJs =
---    { nodes : List NeutroNode
---    , edges : List NeutroEdge
---    }
-
-
 type alias NeutroModel =
     { modelNodes : List NeutroNode
     , modelEdges : List NeutroEdge
@@ -214,12 +209,6 @@ type alias ResultNode =
 
 type alias NeutroResult =
     List ResultNode
-
-
-type alias TestEdges =
-    { from : Int
-    , to : Int
-    }
 
 
 
@@ -359,123 +348,6 @@ defaultTargetNodeForm =
     }
 
 
-dummyEdges =
-    [ { edgeId = 0
-      , from = 1
-      , to = 0
-      , truth = 0.7
-      , indeterminacy = 0.1
-      , falsehood = 0.1
-      }
-    , { edgeId = 1
-      , from = 2
-      , to = 1
-      , truth = 0.6
-      , indeterminacy = 0.1
-      , falsehood = 0.2
-      }
-    , { edgeId = 2
-      , from = 2
-      , to = 3
-      , truth = 0.5
-      , indeterminacy = 0.1
-      , falsehood = 0.5
-      }
-    , { edgeId = 3
-      , from = 4
-      , to = 1
-      , truth = 0.3
-      , indeterminacy = 0.1
-      , falsehood = 0.7
-      }
-    , { edgeId = 4
-      , from = 4
-      , to = 5
-      , truth = 0.7
-      , indeterminacy = 0.1
-      , falsehood = 0.4
-      }
-    , { edgeId = 5
-      , from = 1
-      , to = 5
-      , truth = 0.7
-      , indeterminacy = 0.1
-      , falsehood = 0.4
-      }
-    , { edgeId = 6
-      , from = 3
-      , to = 1
-      , truth = 0.7
-      , indeterminacy = 0.1
-      , falsehood = 0.4
-      }
-    ]
-
-
-dummyNodes =
-    [ { nodeId = 0
-      , label = "A"
-      , truth = 0.8
-      , indeterminacy = 0.1
-      , falsehood = 0.1
-      , state = "Tar"
-      , linkState = "Rec"
-      , inDegree = 1
-      , outDegree = 0
-      }
-    , { nodeId = 1
-      , label = "B"
-      , truth = 0.8
-      , indeterminacy = 0.1
-      , falsehood = 0.3
-      , state = "Reg"
-      , linkState = "Ord"
-      , inDegree = 3
-      , outDegree = 2
-      }
-    , { nodeId = 2
-      , label = "C"
-      , truth = 0.7
-      , indeterminacy = 0.1
-      , falsehood = 0.1
-      , state = "Sim"
-      , linkState = "Tra"
-      , inDegree = 0
-      , outDegree = 2
-      }
-    , { nodeId = 3
-      , label = "D"
-      , truth = 0.8
-      , indeterminacy = 0.2
-      , falsehood = 0.1
-      , state = "Reg"
-      , linkState = "Ord"
-      , inDegree = 1
-      , outDegree = 1
-      }
-    , { nodeId = 4
-      , label = "E"
-      , truth = 0.7
-      , indeterminacy = 0.4
-      , falsehood = 0.2
-      , state = "Reg"
-      , linkState = "Tra"
-      , inDegree = 0
-      , outDegree = 2
-      }
-    , { nodeId = 5
-      , label = "F"
-      , truth = 0.8
-      , indeterminacy = 0.3
-      , falsehood = 0.4
-      , state = "Reg"
-      , linkState = "Rec"
-      , inDegree = 2
-      , outDegree = 0
-      }
-    ]
-
-
 initModel : Model
 initModel =
     -- Elements
@@ -578,7 +450,7 @@ initGraph model =
                     (\{ from, to } ->
                         { source = from
                         , target = to
-                        , distance = 30
+                        , distance = 90
                         , strength = Nothing
                         }
                     )
@@ -824,15 +696,6 @@ update msg model =
             ( model, Cmd.none )
 
         RunSimulation ->
-            --let
-            --    mapNodesToJSNodes : NeutroModel -> NodesForJs
-            --    mapNodesToJSNodes m =
-            --        -- data manipulation with NeutroModel...
-            --        { nodes = []
-            --        , edges = model.edges
-            --        }
-            --in
-            ----( model, sendModel <| mapNodesToJSNodes model.neutroModel )
             let
                 finalNeutroModel =
                     { modelNodes = model.nodes
@@ -2029,9 +1892,6 @@ viewCurrentState model =
         [ viewKpiTable "KPIs" model
         , viewNodeTable "Nodes" viewNodes model.nodes model
         , viewEdgeTable "Edges" (viewEdges model) model
-
-        --, viewSimTable "Simulation" viewSimulatedNodes model.simulatedNodes model
-        --, viewTargetTable "Target" viewTargetNodes model.targetNodes model
         ]
 
 
@@ -2175,70 +2035,6 @@ viewEdge nodes edge =
 
 
 
---viewSimulatedNodes : List NeutroNode -> Html Msg
---viewSimulatedNodes simulatedNodes =
---    table
---        [ class "table" ]
---        (tr
---            [ class "border-bottom border-secondary" ]
---            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
---            , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "" ]
---            ]
---            :: List.map viewSimulatedNode simulatedNodes
---        )
---
---
---viewSimulatedNode : NeutroNode -> Html Msg
---viewSimulatedNode simulatedNode =
---    tr []
---        [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text simulatedNode.label ]
---        , td [ class "tb-header-label text-white text-center border-0" ] [ text "-" ]
---        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.truth) ]
---        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.indeterminacy) ]
---        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.falsehood) ]
---        , td [ class "tb-header-label text-white align-middle text-right border-0" ]
---            [ a
---                [ class "tb-header-label text-danger font-weight-bold"
---                , type_ "button"
---                , onClick (DeleteSimNode simulatedNode.nodeId)
---                ]
---                [ text "X" ]
---            ]
---        ]
---
---
---viewTargetNodes : List TargetNode -> Html Msg
---viewTargetNodes targetNodes =
---    table
---        [ class "table" ]
---        (tr
---            [ class "border-bottom border-secondary" ]
---            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "" ]
---            ]
---            :: List.map viewTargetNode targetNodes
---        )
---
---
---viewTargetNode : TargetNode -> Html Msg
---viewTargetNode targetNode =
---    tr []
---        [ td
---            [ class "tb-header-label text-white align-middle text-left border-0" ]
---            [ text targetNode.targetNodeLabel ]
---        , td [ class "tb-header-label text-white align-middle text-right border-0" ]
---            [ a
---                [ class "tb-header-label text-danger font-weight-bold"
---                , type_ "button"
---                , onClick (DeleteTargetNode targetNode.targetNodeId)
---                ]
---                [ text "X" ]
---            ]
---        ]
 -- SHARED COMPONENTS
 
 
@@ -2397,6 +2193,7 @@ viewTabMenu =
         ]
 
 
+viewNodeTable : String -> (c -> Html Msg) -> c -> { a | nodeTableDisplay : Bool } -> Html Msg
 viewNodeTable title func nodes model =
     div [ class "m-0 w-100" ]
         [ div
@@ -2436,47 +2233,6 @@ viewEdgeTable title edges model =
             [ hidden model.edgeTableDisplay ]
             [ edges ]
         ]
-
-
-
---viewSimTable title func nodes model =
---    div [ class "m-0 w-100" ]
---        [ div
---            [ class "d-flex bg-dark w-100 m-0 border-bottom" ]
---            [ p
---                [ class "p-1 m-0 text-primary" ]
---                [ text title ]
---            , div
---                [ class "w-100 text-right text-primary pr-1"
---                , style "cursor" "pointer"
---                , onClick DisplaySimTable
---                ]
---                [ text "▼" ]
---            ]
---        , div
---            [ hidden model.simTableDisplay ]
---            [ func nodes ]
---        ]
---
---
---viewTargetTable title func nodes model =
---    div [ class "m-0 w-100" ]
---        [ div
---            [ class "d-flex bg-dark w-100 m-0 border-bottom" ]
---            [ p
---                [ class "p-1 m-0 text-primary" ]
---                [ text title ]
---            , div
---                [ class "w-100 text-right text-primary pr-1"
---                , style "cursor" "pointer"
---                , onClick DisplayTargetTable
---                ]
---                [ text "▼" ]
---            ]
---        , div
---            [ hidden model.targetTableDisplay ]
---            [ func nodes ]
---        ]
 
 
 viewKpiTable title model =
@@ -2562,20 +2318,6 @@ nidToString nid =
 
         Nid (Just _) n ->
             n
-
-
-
---ifIsEnter : msg -> Decode.Decoder msg
---ifIsEnter msg =
---    Decode.field "key" Decode.string
---        |> Decode.andThen
---            (\key ->
---                if key == "Enter" then
---                    Decode.succeed msg
---
---                else
---                    Decode.fail "some other key"
---            )
 
 
 isToggled : Bool -> Bool

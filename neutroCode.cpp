@@ -121,41 +121,10 @@ public:
                 }
             }
 
-        // 2- NODES STATE & LINKSTATE UPDATE <<<<<<<<<<<<<<<<<<<<< DO THIS STEP IN ELM
+        // 2- EDGES DATA PREPPING  COMPUTATION
         // ----------------------------------------------------------------------------------------
 
-            // // STATE - Node state and neutro number update for simulated nodes
-            // for (int i = 0; i < simNodes.size(); i++)
-            // {
-            //     int simNodeId = stoi(simNodes[i].label);
-            //     for (int j = 0; j < nodes.size();j++)
-            //     {
-            //         if (nodes[j].nodeId == simNodeId)
-            //         {
-            //             nodes[j].state = simNodes[i].state;
-            //             nodes[j].truth = simNodes[i].truth;
-            //             nodes[j].indeterminacy = simNodes[i].indeterminacy;
-            //             nodes[j].falsehood = simNodes[i].falsehood;
-            //         }
-            //     }
-            // }
-            // // STATE - Node state update for targeted nodes
-            // for (int i = 0; i < targetNodes.size(); i++)
-            // {
-            //     int targetNodeId = stoi(targetNodes[i].targetNodeLabel);
-            //     for (int j = 0; j < nodes.size();j++)
-            //     {
-            //         if (nodes[j].nodeId == targetNodeId)
-            //         {
-            //             nodes[j].state = targetNodes[i].state;
-            //         }
-            //     }
-            // }
-
-        // 3- EDGES DATA PREPPING  COMPUTATION 
-        // ----------------------------------------------------------------------------------------
-
-            // 3.0- Create hash map for nodes
+            // 2.0- Create hash map for nodes
             std::unordered_map<int, Node> hashMapNodes {};
             for(int i = nodes.size()-1; i >= 0; i--)
             {
@@ -165,7 +134,7 @@ public:
                 hashMapNodes[currNodeId] = currNode;               
             }
 
-            // 3.1- Create temporary edge category vectors and separate the edges in them
+            // 2.1- Create temporary edge category vectors and separate the edges in them
             std::vector<Edge> simNodeEdges, transNodeEdges, ordiNodeEdges, targetNodeEdges;
             for (int i = 0; i < edges.size(); i++)
             {
@@ -191,21 +160,21 @@ public:
                 }
             }
 
-            // 3.2- Sort edges in each category
+            // 2.2- Sort edges in each category
             sortEdges(simNodeEdges, hashMapNodes); // Sorting Simulated Node Edges
             sortEdges(transNodeEdges, hashMapNodes); // Sorting transmitter Node Edges
             sortEdges(ordiNodeEdges, hashMapNodes); // Sorting ordinary Node Edges                
             sortEdges(targetNodeEdges, hashMapNodes); // Sorting target Node Edges
 
-            // 3.3- Insert sorted edges into edgesCopy vector         
+            // 2.3- Insert sorted edges into edgesCopy vector
             edgesCopy = appendToEdgeList(edgesCopy, simNodeEdges); // Inserting Simulated Node Edges to edgesCopy
             edgesCopy = appendToEdgeList(edgesCopy, transNodeEdges); // Inserting Transmitter Node Edges to edgesCopy
             edgesCopy = appendToEdgeList(edgesCopy, ordiNodeEdges); // Inserting ordinary Node Edges to edgesCopy
             edgesCopy = appendToEdgeList(edgesCopy, targetNodeEdges); // Inserting target Node Edges to edgesCopy
 
-        // 4- DATA COMPUTATION 
+        // 3- DATA COMPUTATION
         // ----------------------------------------------------------------------------------------
-            // 4.1- Processing all the node relationships (edges)
+            // 3.1- Processing all the node relationships (edges)
             for (int i = 0; i < edgesCopy.size(); i++)
             {
                 Edge currEdge;
@@ -290,7 +259,7 @@ public:
 
             }
 
-            // 4.2- Final adjacency check 
+            // 3.2- Final adjacency check
             for (int i = 0; i < tempResNodes.size();i++)
             {
                 std::vector<Node> finalAdjacencyProcessing {};
@@ -323,7 +292,7 @@ public:
             // Delete tempResNode
             tempResNodes.erase(begin(tempResNodes), end(tempResNodes));
                      
-            // 4.3- Store transmitters and zeroLink nodes in the finalResNodes
+            // 3.3- Store transmitters and zeroLink nodes in the finalResNodes
             for (int i = 0; i < nodes.size(); i++)
             {
                 Node currNode = hashMapNodes[nodes[i].nodeId];
@@ -333,10 +302,10 @@ public:
                 }
             }
 
-            // 4.4- Sort final results vector by nodeId
+            // 3.4- Sort final results vector by nodeId
             finalResNodes = sortNodes(finalResNodes);
 
-            // 4.5- Delete duplicate results in the final results nodes vector (these represent adjacency duplication) <-- this process is a temp solution
+            // 3.5- Delete duplicate results in the final results nodes vector (these represent adjacency duplication) <-- this process is a temp solution
             finalResNodes = deleteDuplicateNodes(finalResNodes);
 
             std::cout << std::endl;
