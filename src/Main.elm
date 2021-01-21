@@ -3,10 +3,6 @@ port module Main exposing (..)
 {-
    TODO
     Primary
-        -[] Fix Ordinary Kpi function
-        -[x] Constraints to be implemented
-            -[x] More than one of the same edge - PARTIALLY DONE FIX IT
-            -[x] Ordinary nodes cannot be simulated
         - Hide Simulation tab before run model
         - Update KPI results, labels and label pairs lists when deleting single element(node, edge) and/or entire model
         - Delete NeutroCalculator instance when deleting button is pressed (JS side)
@@ -642,26 +638,26 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
-        newCnScore =
-            if isNaN (toFloat model.numConnections / toFloat model.numConcepts) == True then
-                0.0
+        numNodes =
+            toFloat model.numConcepts
 
-            else
-                toFloat model.numConnections / toFloat model.numConcepts
+        numEdges =
+            toFloat model.numConnections
+
+        numTransmitterNodes =
+            toFloat model.numTransmitters
+
+        numReceiverNodes =
+            toFloat model.numReceivers
+
+        newCnScore =
+            isNaNChecked (cnScore numEdges numNodes)
 
         newComplexityScore =
-            if isNaN (toFloat model.numTransmitters / toFloat model.numReceivers) == True then
-                0.0
-
-            else
-                toFloat model.numTransmitters / toFloat model.numReceivers
+            isNaNChecked (complexityScore numTransmitterNodes numReceiverNodes)
 
         newDensityScore =
-            if isNaN (toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)) == True then
-                0.0
-
-            else
-                toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)
+            isNaNChecked (densityScore numEdges numNodes)
 
         isButtonEnabled =
             enabledButton model.nodes model.edges
@@ -728,8 +724,15 @@ update msg model =
                     defaultNodeForm
 
                 newNeutroModelNodes =
-                    { modelNodes = model.neutroModel.modelNodes ++ [ newNode ]
-                    , modelEdges = model.neutroModel.modelEdges
+                    let
+                        currentNodesNeutroModel =
+                            model.neutroModel.modelNodes
+
+                        currentEdgesNeutroModel =
+                            model.neutroModel.modelEdges
+                    in
+                    { modelNodes = currentNodesNeutroModel ++ [ newNode ]
+                    , modelEdges = currentEdgesNeutroModel
                     }
 
                 newNodeLabelPair =
@@ -758,27 +761,27 @@ update msg model =
                         newEdgeId =
                             List.length model.edges
 
-                        newFrom =
+                        newOriginNode =
                             edgeFromToCheck model.edgeForm.from
 
-                        newTo =
+                        newDestinyNode =
                             edgeFromToCheck model.edgeForm.to
 
-                        newTruth =
+                        newEdgeTruth =
                             neutroNumberCheck model.edgeForm.truth
 
-                        newIndeterminacy =
+                        newEdgeIndeterminacy =
                             neutroNumberCheck model.edgeForm.indeterminacy
 
-                        newFalsehood =
+                        newEdgeFalsehood =
                             neutroNumberCheck model.edgeForm.falsehood
                     in
                     { edgeId = newEdgeId
-                    , from = newFrom
-                    , to = newTo
-                    , truth = newTruth
-                    , indeterminacy = newIndeterminacy
-                    , falsehood = newFalsehood
+                    , from = newOriginNode
+                    , to = newDestinyNode
+                    , truth = newEdgeTruth
+                    , indeterminacy = newEdgeIndeterminacy
+                    , falsehood = newEdgeFalsehood
                     }
 
                 newEdgeForm =
@@ -789,95 +792,95 @@ update msg model =
                     , modelEdges = model.neutroModel.modelEdges ++ [ newEdge ]
                     }
 
-                newTransmitter =
+                newTransmitterNode =
                     edgeFromToCheck model.edgeForm.from
 
-                newReceiver =
+                newReceiverNode =
                     edgeFromToCheck model.edgeForm.to
 
-                newListTransmitters =
+                currentTransmitterNodeList =
+                    model.listTransmitters
+
+                currentReceiverNodeList =
+                    model.listReceivers
+
+                currentOrdinaryNodeList =
+                    model.listOrdinaries
+
+                currentNodes =
+                    model.nodes
+
+                currentEdges =
+                    model.edges
+
+                newListTransmitterNodes =
                     let
-                        nodeAlreadyExist =
-                            List.member newTransmitter model.listTransmitters
+                        appendedTransmitterList =
+                            newTransmitterNode :: currentTransmitterNodeList
+
+                        nodeAlreadyListed =
+                            List.member newTransmitterNode currentTransmitterNodeList
                     in
-                    if nodeAlreadyExist == True then
-                        model.listTransmitters
+                    if nodeAlreadyListed == True then
+                        currentTransmitterNodeList
 
                     else
-                        newTransmitter :: model.listTransmitters
+                        appendedTransmitterList
 
                 newListReceivers =
                     let
-                        nodeAlreadyExist =
-                            List.member newReceiver model.listReceivers
+                        appendedReceiverList =
+                            newReceiverNode :: currentReceiverNodeList
+
+                        nodeAlreadyListed =
+                            List.member newReceiverNode currentReceiverNodeList
                     in
-                    if nodeAlreadyExist == True then
-                        model.listReceivers
+                    if nodeAlreadyListed == True then
+                        currentReceiverNodeList
 
                     else
-                        newReceiver :: model.listReceivers
+                        appendedReceiverList
 
                 newListOrdinaries =
                     let
-                        fromNodeAlreadyListedOrdinary =
-                            List.member newTransmitter model.listReceivers
-
-                        toNodeAlreadyListedOrdinary =
-                            List.member newReceiver model.listReceivers
-
-                        filteredTransmitterNode =
-                            List.filter (\n -> newTransmitter == n.nodeId) model.nodes
-
-                        filteredReceiverNode =
-                            List.filter (\n -> newReceiver == n.nodeId) model.nodes
-
                         receiverNode =
-                            case List.head filteredReceiverNode of
-                                Just n ->
-                                    n
-
-                                Nothing ->
-                                    errorNode
+                            getNode newReceiverNode currentNodes
 
                         transmitterNode =
-                            case List.head filteredTransmitterNode of
-                                Just n ->
-                                    n
+                            getNode newTransmitterNode currentNodes
 
-                                Nothing ->
-                                    errorNode
+                        receiverNodeOrdinaryCheck =
+                            isOrdinaryNodeValidated receiverNode currentOrdinaryNodeList
+
+                        transmitterNodeOrdinaryCheck =
+                            isOrdinaryNodeValidated transmitterNode currentOrdinaryNodeList
                     in
-                    if List.length model.edges <= 1 || (fromNodeAlreadyListedOrdinary == True && toNodeAlreadyListedOrdinary == True) then
-                        model.listOrdinaries
+                    if numEdges <= 1 then
+                        currentOrdinaryNodeList
 
-                    else if fromNodeAlreadyListedOrdinary == False && toNodeAlreadyListedOrdinary == True then
-                        if transmitterNode.linkState == "Ord" then
-                            model.listOrdinaries
+                    else if receiverNodeOrdinaryCheck == True && transmitterNodeOrdinaryCheck == True then
+                        [ newTransmitterNode, newReceiverNode ] ++ currentOrdinaryNodeList
 
-                        else
-                            newTransmitter :: model.listOrdinaries
+                    else if receiverNodeOrdinaryCheck == True && transmitterNodeOrdinaryCheck == False then
+                        newReceiverNode :: currentOrdinaryNodeList
 
-                    else if fromNodeAlreadyListedOrdinary == True && toNodeAlreadyListedOrdinary == False then
-                        if receiverNode.linkState == "Ord" then
-                            model.listOrdinaries
-
-                        else
-                            newReceiver :: model.listOrdinaries
+                    else if receiverNodeOrdinaryCheck == False && transmitterNodeOrdinaryCheck == True then
+                        newTransmitterNode :: currentOrdinaryNodeList
 
                     else
-                        List.append [ newTransmitter, newReceiver ] model.listOrdinaries
+                        currentOrdinaryNodeList
 
                 newNumOrdinary =
-                    List.length model.listOrdinaries + 1
+                    List.length currentOrdinaryNodeList + 1
 
                 newNumConnections =
-                    List.length model.edges + 1
+                    List.length currentEdges + 1
 
                 newNumTransmitters =
-                    List.length model.listTransmitters + 1
+                    List.length currentTransmitterNodeList + 1
 
                 newNumReceivers =
-                    List.length model.listReceivers + 1
+                    List.length currentReceiverNodeList + 1
 
                 updatedNodeDegreeAndLinkState =
                     let
@@ -888,13 +891,13 @@ update msg model =
                             edgeFromToCheck model.edgeForm.to
 
                         nodeOutDegreeToUpdate =
-                            List.filter (\n -> n.nodeId == transmitterNodeId) model.nodes
+                            List.filter (\n -> n.nodeId == transmitterNodeId) currentNodes
 
                         nodeInDegreeToUpdate =
-                            List.filter (\n -> n.nodeId == receiverNodeId) model.nodes
+                            List.filter (\n -> n.nodeId == receiverNodeId) currentNodes
 
                         allNodesButTransmitter =
-                            List.filter (\n -> n.nodeId /= transmitterNodeId) model.nodes
+                            List.filter (\n -> n.nodeId /= transmitterNodeId) currentNodes
 
                         outNodes =
                             case List.head nodeOutDegreeToUpdate of
@@ -969,7 +972,7 @@ update msg model =
                 , edgePairs = newEdgePairList
 
                 -- KPIs
-                , listTransmitters = newListTransmitters
+                , listTransmitters = newListTransmitterNodes
                 , listReceivers = newListReceivers
                 , listOrdinaries = newListOrdinaries
                 , numConnections = newNumConnections
@@ -2464,7 +2467,7 @@ isToggled formToggle =
 
 enabledFormView : List NeutroNode -> String
 enabledFormView nodes =
-    if nodes == [] || List.length nodes <= 2 then
+    if nodes == [] || List.length nodes < 2 then
         "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
 
     else
@@ -2480,24 +2483,68 @@ enabledButton nodes edges =
         False
 
 
+isNaNChecked : Float -> Float
+isNaNChecked kpiResult =
+    if isNaN kpiResult == True then
+        0.0
 
---newCnScore =
---    if isNaN (toFloat model.numConnections / toFloat model.numConcepts) == True then
---        0.0
---
---    else
---        toFloat model.numConnections / toFloat model.numConcepts
---
---newComplexityScore =
---    if isNaN (toFloat model.numTransmitters / toFloat model.numReceivers) == True then
---        0.0
---
---    else
---        toFloat model.numTransmitters / toFloat model.numReceivers
---
---newDensityScore =
---    if isNaN (toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)) == True then
---        0.0
---
---    else
---        toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)
+    else
+        kpiResult
+
+
+isOrdinaryNodeValidated : NeutroNode -> List Int -> Bool
+isOrdinaryNodeValidated node nodeIdList =
+    let
+        outDegree =
+            node.outDegree
+
+        inDegree =
+            node.inDegree
+
+        nodeId =
+            node.nodeId
+
+        isNodeAlreadyMember =
+            List.member nodeId nodeIdList
+
+        isDegreeOrdinary =
+            if outDegree > 0 && inDegree > 0 then
+                True
+
+            else
+                False
+    in
+    if isNodeAlreadyMember == False && isDegreeOrdinary == True then
+        True
+
+    else
+        False
+
+
+getNode : Int -> List NeutroNode -> NeutroNode
+getNode nodeId nodes =
+    let
+        filteredNode =
+            List.filter (\n -> nodeId == n.nodeId) nodes
+    in
+    case List.head filteredNode of
+        Just n ->
+            n
+
+        Nothing ->
+            errorNode
+
+
+cnScore : Float -> Float -> Float
+cnScore numEdges numNodes =
+    numEdges / numNodes
+
+
+complexityScore : Float -> Float -> Float
+complexityScore numTransmitterNodes numReceiverNodes =
+    numTransmitterNodes / numReceiverNodes
+
+
+densityScore : Float -> Float -> Float
+densityScore numEdges numNodes =
+    numEdges / numNodes * (numNodes - 1)
