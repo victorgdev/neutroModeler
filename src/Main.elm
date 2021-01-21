@@ -3,8 +3,6 @@ port module Main exposing (..)
 {-
    TODO
     Primary
-        - Hide Simulation tab before run model
-        - Update KPI results, labels and label pairs lists when deleting single element(node, edge) and/or entire model
         - Delete NeutroCalculator instance when deleting button is pressed (JS side)
     Secondary
         - Implement fixed size table height for nodes & edges table, and implement a scrollbar
@@ -129,7 +127,8 @@ type alias Model =
     , nodeTableDisplay : Bool
     , edgeTableDisplay : Bool
     , currentStateTabDisplay : Bool
-    , simStateTabDisplay : Bool
+    , simulatedStateTabDisplay : Bool
+    , simulatedStateResultDisplay : Bool
 
     -- KPIs
     , listTransmitters : List Int
@@ -404,7 +403,8 @@ initModel =
     , nodeTableDisplay = False
     , edgeTableDisplay = False
     , currentStateTabDisplay = False
-    , simStateTabDisplay = True
+    , simulatedStateTabDisplay = True
+    , simulatedStateResultDisplay = True
 
     -- KPIs
     , listTransmitters = []
@@ -644,6 +644,12 @@ update msg model =
         numEdges =
             toFloat model.numConnections
 
+        numSimNodes =
+            List.length model.simulatedNodes + 1
+
+        numTargetNodes =
+            List.length model.targetNodes + 1
+
         numTransmitterNodes =
             toFloat model.numTransmitters
 
@@ -660,7 +666,7 @@ update msg model =
             isNaNChecked (densityScore numEdges numNodes)
 
         isButtonEnabled =
-            enabledButton model.nodes model.edges
+            enabledButton model.nodes model.edges numSimNodes numTargetNodes
 
         isEdgeFormEnabled =
             enabledFormView model.nodes
@@ -682,7 +688,7 @@ update msg model =
                     , modelEdges = model.edges
                     }
             in
-            ( model, sendModel finalNeutroModel )
+            ( { model | simulatedStateResultDisplay = False }, sendModel finalNeutroModel )
 
         AddNode ->
             let
@@ -804,14 +810,17 @@ update msg model =
                 currentReceiverNodeList =
                     model.listReceivers
 
-                currentOrdinaryNodeList =
-                    model.listOrdinaries
-
                 currentNodes =
                     model.nodes
 
                 currentEdges =
                     model.edges
+
+                receiverNode =
+                    getNode newReceiverNode currentNodes
+
+                transmitterNode =
+                    getNode newTransmitterNode currentNodes
 
                 newListTransmitterNodes =
                     let
@@ -841,37 +850,19 @@ update msg model =
                     else
                         appendedReceiverList
 
-                newListOrdinaries =
+                newNumOrdinary =
                     let
-                        receiverNode =
-                            getNode newReceiverNode currentNodes
-
-                        transmitterNode =
-                            getNode newTransmitterNode currentNodes
-
-                        receiverNodeOrdinaryCheck =
-                            isOrdinaryNodeValidated receiverNode currentOrdinaryNodeList
-
-                        transmitterNodeOrdinaryCheck =
-                            isOrdinaryNodeValidated transmitterNode currentOrdinaryNodeList
+                        currentNumOrdinary =
+                            model.numOrdinary
                     in
-                    if numEdges <= 1 then
-                        currentOrdinaryNodeList
+                    if receiverNode.linkState == "Ord" && transmitterNode.linkState == "Ord" then
+                        currentNumOrdinary + 2
 
-                    else if receiverNodeOrdinaryCheck == True && transmitterNodeOrdinaryCheck == True then
-                        [ newTransmitterNode, newReceiverNode ] ++ currentOrdinaryNodeList
-
-                    else if receiverNodeOrdinaryCheck == True && transmitterNodeOrdinaryCheck == False then
-                        newReceiverNode :: currentOrdinaryNodeList
-
-                    else if receiverNodeOrdinaryCheck == False && transmitterNodeOrdinaryCheck == True then
-                        newTransmitterNode :: currentOrdinaryNodeList
+                    else if receiverNode.linkState == "Ord" || transmitterNode.linkState == "Ord" then
+                        currentNumOrdinary + 1
 
                     else
-                        currentOrdinaryNodeList
-
-                newNumOrdinary =
-                    List.length currentOrdinaryNodeList + 1
+                        currentNumOrdinary
 
                 newNumConnections =
                     List.length currentEdges + 1
@@ -974,7 +965,6 @@ update msg model =
                 -- KPIs
                 , listTransmitters = newListTransmitterNodes
                 , listReceivers = newListReceivers
-                , listOrdinaries = newListOrdinaries
                 , numConnections = newNumConnections
                 , numTransmitters = newNumTransmitters
                 , numReceivers = newNumReceivers
@@ -1155,31 +1145,7 @@ update msg model =
             )
 
         DeleteModel ->
-            ( { model
-                | nodes = []
-                , edges = []
-                , simulatedNodes = []
-                , targetNodes = []
-                , nodeLabelPairs = []
-                , targetLabels = []
-                , simLabels = []
-                , nodeLabels = []
-                , listTransmitters = []
-                , listReceivers = []
-                , listOrdinaries = []
-                , numConcepts = 0
-                , numConnections = 0
-                , numTransmitters = 0
-                , numReceivers = 0
-                , numOrdinary = 0
-                , cnScore = 0.0
-                , complexityScore = 0.0
-                , densityScore = 0.0
-                , simulationResult = []
-                , neutroModel = defaultNeutroModel
-              }
-            , Cmd.none
-            )
+            ( initModel, Cmd.none )
 
         UpdateNodeLabel newLabel ->
             let
@@ -1678,14 +1644,14 @@ update msg model =
         DisplayCurState ->
             ( { model
                 | currentStateTabDisplay = False
-                , simStateTabDisplay = True
+                , simulatedStateTabDisplay = True
               }
             , Cmd.none
             )
 
         DisplaySimState ->
             ( { model
-                | simStateTabDisplay = False
+                | simulatedStateTabDisplay = False
                 , currentStateTabDisplay = True
               }
             , Cmd.none
@@ -1869,12 +1835,12 @@ viewRightMenuBar model =
     div
         [ class "shadow bar-scroll col-3" ]
         [ div [ class "m-0 w-100" ]
-            [ viewTabMenu
+            [ viewTabMenu model
             , div
                 [ hidden model.currentStateTabDisplay ]
                 [ viewCurrentState model ]
             , div
-                [ hidden model.simStateTabDisplay ]
+                [ hidden model.simulatedStateTabDisplay ]
                 [ viewResultNodesState model.simulationResult ]
             ]
         ]
@@ -2296,22 +2262,24 @@ viewDeleteButton p c model msg =
 viewFormHeader : String -> String -> Msg -> Html Msg
 viewFormHeader title cls msg =
     div
-        [ class cls ]
+        [ class cls
+        , style "cursor" "pointer"
+        , onClick msg
+        ]
         [ button
             [ class "btn mt-1 p-0"
             , type_ "button"
             ]
             [ h6
                 [ class "text-white"
-                , onClick msg
                 ]
                 [ text title ]
             ]
         ]
 
 
-viewTabMenu : Html Msg
-viewTabMenu =
+viewTabMenu : Model -> Html Msg
+viewTabMenu model =
     div
         [ class "tab d-flex bg-dark w-100 mt-2" ]
         [ button
@@ -2321,9 +2289,10 @@ viewTabMenu =
             ]
             [ text "Current State" ]
         , button
-            [ class "w-100 text-white p-1"
+            [ class "w-100 text-white p-1 bg-danger"
             , style "cursor" "pointer"
             , onClick DisplaySimState
+            , hidden model.simulatedStateResultDisplay
             ]
             [ text "Simulation" ]
         ]
@@ -2474,9 +2443,9 @@ enabledFormView nodes =
         "card-header m-0 p-1 bg-primary text-center"
 
 
-enabledButton : List NeutroNode -> List NeutroEdge -> Bool
-enabledButton nodes edges =
-    if nodes == [] || edges == [] then
+enabledButton : List NeutroNode -> List NeutroEdge -> Int -> Int -> Bool
+enabledButton nodes edges numSimNodes numTargetNodes =
+    if nodes == [] && edges == [] && numSimNodes < 1 && numTargetNodes < 1 then
         True
 
     else
@@ -2537,14 +2506,23 @@ getNode nodeId nodes =
 
 cnScore : Float -> Float -> Float
 cnScore numEdges numNodes =
-    numEdges / numNodes
+    (numEdges / numNodes)
+        |> Round.round 2
+        |> String.toFloat
+        |> Maybe.withDefault 0.0
 
 
 complexityScore : Float -> Float -> Float
 complexityScore numTransmitterNodes numReceiverNodes =
-    numTransmitterNodes / numReceiverNodes
+    (numTransmitterNodes / numReceiverNodes)
+        |> Round.round 2
+        |> String.toFloat
+        |> Maybe.withDefault 0.0
 
 
 densityScore : Float -> Float -> Float
 densityScore numEdges numNodes =
-    numEdges / numNodes * (numNodes - 1)
+    (numEdges / numNodes * (numNodes - 1))
+        |> Round.round 2
+        |> String.toFloat
+        |> Maybe.withDefault 0.0
