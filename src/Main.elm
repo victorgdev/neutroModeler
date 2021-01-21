@@ -2,19 +2,24 @@ port module Main exposing (..)
 
 {-
    TODO
-         Primary
-             - Fix Ordinary Kpi function
-             - Implement constraint more than one of the same edge
-             - Implement KPI update on single element(node, edge) deletion
-             - Implement label pairs and list update on entire model and on single element(node, edge) deletion
-             - JS code implementation
-         Secondary
-             - Implement fixed size table height for nodes & edges table, and implement a scrollbar
-             - Implement line with arrows
-             - Implement Force Directed NeutroGraph interactive graph drag and drop
-             - Tooltip - tips and explanations modals
-             - Icons for the buttons
-             - Change the color of the node in graph and table to ID simNode and targetNode
+    Primary
+        -[] Fix Ordinary Kpi function
+        -[x] Constraints to be implemented
+            -[x] More than one of the same edge - PARTIALLY DONE FIX IT
+            -[x] Ordinary nodes cannot be simulated
+        - Hide Simulation tab before run model
+        - Update KPI results, labels and label pairs lists when deleting single element(node, edge) and/or entire model
+        - Delete NeutroCalculator instance when deleting button is pressed (JS side)
+    Secondary
+        - Implement fixed size table height for nodes & edges table, and implement a scrollbar
+        - Implement line with arrows
+        - Implement Force Directed NeutroGraph interactive graph drag and drop
+        - Tooltips(tips and explanations modals)
+            - Elements explanation (what is a node, simulation node, target node, edge)
+            - What does the neutro numbers means within nodes (existence in the model) and edges (impact level and type (direct or inverse) on the destiny node)
+            - How to read the simulation result
+        - Icons for the buttons
+        - Change the color of the node in graph and table to ID simNode and targetNode
 
          Set local storage port example code
          --------------------------------------------------------------------------------------
@@ -48,7 +53,7 @@ import Json.Decode as Decode exposing (Decoder, Value, float, int, list, string)
 import Json.Decode.Pipeline as Decode
 import List exposing (range)
 import List.Extra
-import Round exposing (ceiling)
+import Round
 import String exposing (concat)
 import Tuple exposing (first, pair, second)
 import TypedSvg exposing (circle, g, line, polygon, svg)
@@ -106,6 +111,7 @@ type alias Model =
     , simLabels : List String
     , nodeLabels : List String
     , targetLabels : List String
+    , edgePairs : List ( Int, Int )
 
     -- Forms
     , nodeForm : NodeForm
@@ -153,13 +159,6 @@ type alias Model =
 
 type alias NodeLabelPair =
     ( Int, String )
-
-
-
---type alias NodesForJs =
---    { nodes : List NeutroNode
---    , edges : List NeutroEdge
---    }
 
 
 type alias NeutroModel =
@@ -214,12 +213,6 @@ type alias ResultNode =
 
 type alias NeutroResult =
     List ResultNode
-
-
-type alias TestEdges =
-    { from : Int
-    , to : Int
-    }
 
 
 
@@ -359,121 +352,26 @@ defaultTargetNodeForm =
     }
 
 
-dummyEdges =
-    [ { edgeId = 0
-      , from = 1
-      , to = 0
-      , truth = 0.7
-      , indeterminacy = 0.1
-      , falsehood = 0.1
-      }
-    , { edgeId = 1
-      , from = 2
-      , to = 1
-      , truth = 0.6
-      , indeterminacy = 0.1
-      , falsehood = 0.2
-      }
-    , { edgeId = 2
-      , from = 2
-      , to = 3
-      , truth = 0.5
-      , indeterminacy = 0.1
-      , falsehood = 0.5
-      }
-    , { edgeId = 3
-      , from = 4
-      , to = 1
-      , truth = 0.3
-      , indeterminacy = 0.1
-      , falsehood = 0.7
-      }
-    , { edgeId = 4
-      , from = 4
-      , to = 5
-      , truth = 0.7
-      , indeterminacy = 0.1
-      , falsehood = 0.4
-      }
-    , { edgeId = 5
-      , from = 1
-      , to = 5
-      , truth = 0.7
-      , indeterminacy = 0.1
-      , falsehood = 0.4
-      }
-    , { edgeId = 6
-      , from = 3
-      , to = 1
-      , truth = 0.7
-      , indeterminacy = 0.1
-      , falsehood = 0.4
-      }
-    ]
+errorNode : NeutroNode
+errorNode =
+    { nodeId = -1
+    , label = "Error"
+    , truth = 0
+    , indeterminacy = 0
+    , falsehood = 0
+    , state = "Error"
+    , linkState = "Error"
+    , inDegree = -1
+    , outDegree = -1
+    }
 
 
-dummyNodes =
-    [ { nodeId = 0
-      , label = "A"
-      , truth = 0.8
-      , indeterminacy = 0.1
-      , falsehood = 0.1
-      , state = "Tar"
-      , linkState = "Rec"
-      , inDegree = 1
-      , outDegree = 0
-      }
-    , { nodeId = 1
-      , label = "B"
-      , truth = 0.8
-      , indeterminacy = 0.1
-      , falsehood = 0.3
-      , state = "Reg"
-      , linkState = "Ord"
-      , inDegree = 3
-      , outDegree = 2
-      }
-    , { nodeId = 2
-      , label = "C"
-      , truth = 0.7
-      , indeterminacy = 0.1
-      , falsehood = 0.1
-      , state = "Sim"
-      , linkState = "Tra"
-      , inDegree = 0
-      , outDegree = 2
-      }
-    , { nodeId = 3
-      , label = "D"
-      , truth = 0.8
-      , indeterminacy = 0.2
-      , falsehood = 0.1
-      , state = "Reg"
-      , linkState = "Ord"
-      , inDegree = 1
-      , outDegree = 1
-      }
-    , { nodeId = 4
-      , label = "E"
-      , truth = 0.7
-      , indeterminacy = 0.4
-      , falsehood = 0.2
-      , state = "Reg"
-      , linkState = "Tra"
-      , inDegree = 0
-      , outDegree = 2
-      }
-    , { nodeId = 5
-      , label = "F"
-      , truth = 0.8
-      , indeterminacy = 0.3
-      , falsehood = 0.4
-      , state = "Reg"
-      , linkState = "Rec"
-      , inDegree = 2
-      , outDegree = 0
-      }
-    ]
+initialFormView =
+    "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
+
+
+
+-- INIT MODEL
 
 
 initModel : Model
@@ -488,6 +386,7 @@ initModel =
     , simLabels = []
     , nodeLabels = []
     , targetLabels = []
+    , edgePairs = []
 
     -- Forms
     , nodeForm = defaultNodeForm
@@ -498,9 +397,9 @@ initModel =
     , edgeFormDisplay = True
     , simFormDisplay = True
     , targetFormDisplay = True
-    , disableEdgeForm = "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
-    , disableSimForm = "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
-    , disableTargetForm = "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
+    , disableEdgeForm = initialFormView
+    , disableSimForm = initialFormView
+    , disableTargetForm = initialFormView
     , disableRunButton = True
     , disableDeleteButton = True
     , disableFormBtn = False
@@ -578,7 +477,7 @@ initGraph model =
                     (\{ from, to } ->
                         { source = from
                         , target = to
-                        , distance = 30
+                        , distance = 90
                         , strength = Nothing
                         }
                     )
@@ -661,27 +560,7 @@ nodeSize size node =
 
 
 nodeElement node =
-    if node.label.value.rank < 5 then
-        nodeSize 4 node.label
-
-    else if node.label.value.rank < 9 then
-        nodeSize 4 node.label
-
-    else if modBy 2 node.label.value.rank == 0 then
-        g []
-            [ nodeSize 4 node.label
-            , circle
-                [ r 4
-                , cx node.label.x
-                , cy node.label.y
-                , fill PaintNone
-                , stroke <| Paint <| Color.rgba 0 0 0 1
-                ]
-                []
-            ]
-
-    else
-        nodeSize 4 node.label
+    nodeSize 6 node.label
 
 
 neutroGraph : Model -> Graph String ()
@@ -734,8 +613,8 @@ type Msg
     | UpdateNodeIndeterminacy String
     | UpdateNodeFalsehood String
       -- Edge
-    | UpdateEdgeFrom String
-    | UpdateEdgeTo String
+    | UpdateEdgeOriginNode String
+    | UpdateEdgeDestinyNode String
     | UpdateEdgeTruth String
     | UpdateEdgeIndeterminacy String
     | UpdateEdgeFalsehood String
@@ -784,55 +663,23 @@ update msg model =
             else
                 toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)
 
-        runBtnToggle =
-            if model.nodes == [] || model.edges == [] || model.simulatedNodes == [] then
-                True
+        isButtonEnabled =
+            enabledButton model.nodes model.edges
 
-            else
-                False
+        isEdgeFormEnabled =
+            enabledFormView model.nodes
 
-        deleteBtnToggle =
-            if model.nodes == [] then
-                True
+        isNodeSimFormEnabled =
+            enabledFormView model.nodes
 
-            else
-                False
-
-        enableEdgeForm =
-            if List.length model.nodes < 2 then
-                "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
-
-            else
-                "card-header m-0 p-1 bg-primary text-center"
-
-        enableSimForm =
-            if model.nodes == [] then
-                "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
-
-            else
-                "card-header m-0 p-1 bg-primary text-center"
-
-        enableTargetForm =
-            if model.nodes == [] then
-                "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
-
-            else
-                "card-header m-0 p-1 bg-primary text-center"
+        isTargetFormEnabled =
+            enabledFormView model.nodes
     in
     case msg of
         NoOp ->
             ( model, Cmd.none )
 
         RunSimulation ->
-            --let
-            --    mapNodesToJSNodes : NeutroModel -> NodesForJs
-            --    mapNodesToJSNodes m =
-            --        -- data manipulation with NeutroModel...
-            --        { nodes = []
-            --        , edges = model.edges
-            --        }
-            --in
-            ----( model, sendModel <| mapNodesToJSNodes model.neutroModel )
             let
                 finalNeutroModel =
                     { modelNodes = model.nodes
@@ -897,8 +744,8 @@ update msg model =
                 , densityScore = newDensityScore
                 , neutroModel = newNeutroModelNodes
                 , nodeLabelPairs = model.nodeLabelPairs ++ [ newNodeLabelPair ]
-                , disableRunButton = runBtnToggle
-                , disableDeleteButton = deleteBtnToggle
+                , disableRunButton = isButtonEnabled
+                , disableDeleteButton = isButtonEnabled
                 , nodeLabels = model.nodeLabels ++ [ model.nodeForm.label ]
               }
             , Cmd.none
@@ -990,16 +837,7 @@ update msg model =
                                     n
 
                                 Nothing ->
-                                    { nodeId = 0
-                                    , label = "Error"
-                                    , truth = 0
-                                    , indeterminacy = 0
-                                    , falsehood = 0
-                                    , state = "Error"
-                                    , linkState = "Error"
-                                    , inDegree = 0
-                                    , outDegree = 0
-                                    }
+                                    errorNode
 
                         transmitterNode =
                             case List.head filteredTransmitterNode of
@@ -1007,16 +845,7 @@ update msg model =
                                     n
 
                                 Nothing ->
-                                    { nodeId = 0
-                                    , label = "Error"
-                                    , truth = 0
-                                    , indeterminacy = 0
-                                    , falsehood = 0
-                                    , state = "Error"
-                                    , linkState = "Error"
-                                    , inDegree = 0
-                                    , outDegree = 0
-                                    }
+                                    errorNode
                     in
                     if List.length model.edges <= 1 || (fromNodeAlreadyListedOrdinary == True && toNodeAlreadyListedOrdinary == True) then
                         model.listOrdinaries
@@ -1105,10 +934,41 @@ update msg model =
                                     model.nodes
                     in
                     updatedNodes
+
+                newFromNodeId =
+                    edgeFromToCheck model.edgeForm.from
+
+                newToNodeId =
+                    edgeFromToCheck model.edgeForm.to
+
+                newEdgePair =
+                    pair newFromNodeId newToNodeId
+
+                isEdgePairAlreadyListed =
+                    List.member newEdgePair model.edgePairs
+
+                newEdgePairList =
+                    if isEdgePairAlreadyListed == True then
+                        model.edgePairs
+
+                    else
+                        model.edgePairs ++ [ newEdgePair ]
+
+                newEdges =
+                    if isEdgePairAlreadyListed == True then
+                        model.edges
+
+                    else
+                        model.edges ++ [ newEdge ]
             in
             ( { model
-                | edgeForm = newEdgeForm
-                , edges = model.edges ++ [ newEdge ]
+                | nodes = updatedNodeDegreeAndLinkState
+                , edges = newEdges
+                , edgeForm = newEdgeForm
+                , neutroModel = newNeutroModelEdges
+                , edgePairs = newEdgePairList
+
+                -- KPIs
                 , listTransmitters = newListTransmitters
                 , listReceivers = newListReceivers
                 , listOrdinaries = newListOrdinaries
@@ -1119,10 +979,10 @@ update msg model =
                 , cnScore = newCnScore
                 , complexityScore = newComplexityScore
                 , densityScore = newDensityScore
-                , neutroModel = newNeutroModelEdges
-                , disableRunButton = runBtnToggle
-                , disableDeleteButton = deleteBtnToggle
-                , nodes = updatedNodeDegreeAndLinkState
+
+                --
+                , disableRunButton = isButtonEnabled
+                , disableDeleteButton = isButtonEnabled
               }
             , Cmd.none
             )
@@ -1197,8 +1057,8 @@ update msg model =
                 , simulatedNodes = model.simulatedNodes ++ [ newSimulationNode ]
                 , nodes = updatedNodeFromSim
                 , neutroModel = newNeutroModelSimNodes
-                , disableRunButton = runBtnToggle
-                , disableDeleteButton = deleteBtnToggle
+                , disableRunButton = isButtonEnabled
+                , disableDeleteButton = isButtonEnabled
                 , simLabels = model.simLabels ++ [ model.simulationForm.simLabel ]
               }
             , Cmd.none
@@ -1248,8 +1108,8 @@ update msg model =
                 , targetNodes = model.targetNodes ++ [ newTargetNode ]
                 , nodes = updatedNodeFromTarget
                 , neutroModel = newNeutroModelTargetNodes
-                , disableRunButton = runBtnToggle
-                , disableDeleteButton = deleteBtnToggle
+                , disableRunButton = isButtonEnabled
+                , disableDeleteButton = isButtonEnabled
                 , targetLabels = model.targetLabels ++ [ model.targetNodeForm.targetNodeLabel ]
               }
             , Cmd.none
@@ -1269,8 +1129,8 @@ update msg model =
                 | nodes = List.filter (\n -> n.nodeId /= nodeId) model.nodes
                 , neutroModel = newNeutroModelNodesDeleted
                 , nodeLabelPairs = List.Extra.removeAt indexToRemove model.nodeLabelPairs
-                , disableRunButton = runBtnToggle
-                , disableDeleteButton = deleteBtnToggle
+                , disableRunButton = isButtonEnabled
+                , disableDeleteButton = isButtonEnabled
               }
             , Cmd.none
             )
@@ -1285,8 +1145,8 @@ update msg model =
             ( { model
                 | edges = List.filter (\n -> n.edgeId /= edgeId) model.edges
                 , neutroModel = newNeutroModelEdgesDeleted
-                , disableRunButton = runBtnToggle
-                , disableDeleteButton = deleteBtnToggle
+                , disableRunButton = isButtonEnabled
+                , disableDeleteButton = isButtonEnabled
               }
             , Cmd.none
             )
@@ -1335,11 +1195,11 @@ update msg model =
             in
             ( { model
                 | nodeForm = newNodeForm
-                , disableEdgeForm = enableEdgeForm
-                , disableSimForm = enableSimForm
-                , disableTargetForm = enableTargetForm
-                , disableRunButton = runBtnToggle
-                , disableDeleteButton = deleteBtnToggle
+                , disableEdgeForm = isEdgeFormEnabled
+                , disableSimForm = isNodeSimFormEnabled
+                , disableTargetForm = isTargetFormEnabled
+                , disableRunButton = isButtonEnabled
+                , disableDeleteButton = isButtonEnabled
                 , disableFormBtn = sameLabelValidation
               }
             , Cmd.none
@@ -1414,33 +1274,62 @@ update msg model =
             in
             ( { model | nodeForm = newNodeForm }, Cmd.none )
 
-        UpdateEdgeFrom newFrom ->
+        UpdateEdgeOriginNode newOriginNode ->
             let
                 oldEdgeForm =
                     model.edgeForm
 
                 newEdgeForm =
-                    if String.all Char.isDigit newFrom == True then
-                        { oldEdgeForm | from = Nid Nothing newFrom }
+                    let
+                        isDigitNodeCheck =
+                            String.all Char.isDigit newOriginNode
+                    in
+                    if isDigitNodeCheck == True then
+                        { oldEdgeForm | from = Nid Nothing newOriginNode }
 
                     else
                         let
-                            maybeFrom =
-                                newFrom |> String.toInt
+                            maybeNewOriginNode =
+                                newOriginNode |> String.toInt
                         in
-                        case maybeFrom of
+                        case maybeNewOriginNode of
                             Nothing ->
-                                { oldEdgeForm | from = Nid Nothing newFrom }
+                                { oldEdgeForm | from = Nid Nothing newOriginNode }
 
                             Just t ->
-                                { oldEdgeForm | from = Nid (Just t) newFrom }
+                                { oldEdgeForm | from = Nid (Just t) newOriginNode }
 
-                toNode =
-                    nidToString model.edgeForm.to
+                disabledEdgeForm =
+                    let
+                        originNode =
+                            nidToString model.edgeForm.from
 
-                -- TODO: create same edge constraint
-                edgeDirectionValidation =
-                    if newFrom == toNode then
+                        originNodeId =
+                            case String.toInt originNode of
+                                Just n ->
+                                    n
+
+                                Nothing ->
+                                    -1
+
+                        destinyNode =
+                            nidToString model.edgeForm.to
+
+                        destinyNodeId =
+                            case String.toInt destinyNode of
+                                Just n ->
+                                    n
+
+                                Nothing ->
+                                    -1
+
+                        edgeNodeIdPair =
+                            pair originNodeId destinyNodeId
+
+                        isEdgeAlreadyListed =
+                            List.member edgeNodeIdPair model.edgePairs
+                    in
+                    if newOriginNode == originNode || isEdgeAlreadyListed == True then
                         True
 
                     else
@@ -1448,36 +1337,69 @@ update msg model =
             in
             ( { model
                 | edgeForm = newEdgeForm
-                , disableRunButton = runBtnToggle
-                , disableDeleteButton = deleteBtnToggle
-                , disableFormBtn = edgeDirectionValidation
+                , disableRunButton = isButtonEnabled
+                , disableDeleteButton = isButtonEnabled
+                , disableFormBtn = disabledEdgeForm
               }
             , Cmd.none
             )
 
-        UpdateEdgeTo newTo ->
+        UpdateEdgeDestinyNode newDestinyNode ->
             let
                 oldEdgeForm =
                     model.edgeForm
 
                 newEdgeForm =
-                    if String.all Char.isDigit newTo == True then
-                        { oldEdgeForm | to = Nid Nothing newTo }
+                    let
+                        isDigitNodeCheck =
+                            String.all Char.isDigit newDestinyNode
+                    in
+                    if isDigitNodeCheck == True then
+                        { oldEdgeForm | to = Nid Nothing newDestinyNode }
 
                     else
                         let
-                            maybeTo =
-                                newTo |> String.toInt
+                            maybeNewDestinyNode =
+                                newDestinyNode |> String.toInt
                         in
-                        case maybeTo of
+                        case maybeNewDestinyNode of
                             Nothing ->
-                                { oldEdgeForm | to = Nid Nothing newTo }
+                                { oldEdgeForm | to = Nid Nothing newDestinyNode }
 
                             Just t ->
-                                { oldEdgeForm | to = Nid (Just t) newTo }
+                                { oldEdgeForm | to = Nid (Just t) newDestinyNode }
 
-                edgeDirectionValidation =
-                    if newTo == nidToString model.edgeForm.from then
+                disabledEdgeForm =
+                    let
+                        originNode =
+                            nidToString model.edgeForm.from
+
+                        originNodeId =
+                            case String.toInt originNode of
+                                Just n ->
+                                    n
+
+                                Nothing ->
+                                    -1
+
+                        destinyNode =
+                            nidToString model.edgeForm.to
+
+                        destinyNodeId =
+                            case String.toInt destinyNode of
+                                Just n ->
+                                    n
+
+                                Nothing ->
+                                    -1
+
+                        edgeNodeIdPair =
+                            pair originNodeId destinyNodeId
+
+                        isEdgeAlreadyListed =
+                            List.member edgeNodeIdPair model.edgePairs
+                    in
+                    if newDestinyNode == originNode || isEdgeAlreadyListed == True then
                         True
 
                     else
@@ -1485,7 +1407,7 @@ update msg model =
             in
             ( { model
                 | edgeForm = newEdgeForm
-                , disableFormBtn = edgeDirectionValidation
+                , disableFormBtn = disabledEdgeForm
               }
             , Cmd.none
             )
@@ -1510,8 +1432,49 @@ update msg model =
 
                             Just t ->
                                 { oldEdgeForm | truth = NeutroField (Just t) newTruth }
+
+                disabledEdgeForm =
+                    let
+                        originNode =
+                            nidToString model.edgeForm.from
+
+                        originNodeId =
+                            case String.toInt originNode of
+                                Just n ->
+                                    n
+
+                                Nothing ->
+                                    -1
+
+                        destinyNode =
+                            nidToString model.edgeForm.to
+
+                        destinyNodeId =
+                            case String.toInt destinyNode of
+                                Just n ->
+                                    n
+
+                                Nothing ->
+                                    -1
+
+                        edgeNodeIdPair =
+                            pair originNodeId destinyNodeId
+
+                        isEdgeAlreadyListed =
+                            List.member edgeNodeIdPair model.edgePairs
+                    in
+                    if destinyNode == originNode || isEdgeAlreadyListed == True then
+                        True
+
+                    else
+                        False
             in
-            ( { model | edgeForm = newEdgeForm }, Cmd.none )
+            ( { model
+                | edgeForm = newEdgeForm
+                , disableFormBtn = disabledEdgeForm
+              }
+            , Cmd.none
+            )
 
         UpdateEdgeIndeterminacy newIndeterminacy ->
             let
@@ -1568,7 +1531,40 @@ update msg model =
                     { oldSimulationForm | simLabel = newSimulatedNodeLabel }
 
                 alreadySim =
-                    if List.member newSimulatedNodeLabel model.simLabels == True then
+                    let
+                        simNodeId =
+                            case String.toInt newSimulatedNodeLabel of
+                                Just n ->
+                                    n
+
+                                Nothing ->
+                                    -1
+
+                        maybeCurrSimNode =
+                            List.filter (\n -> simNodeId == n.nodeId) model.nodes
+                                |> List.head
+
+                        currentSimNode =
+                            case maybeCurrSimNode of
+                                Just n ->
+                                    n
+
+                                Nothing ->
+                                    errorNode
+
+                        isAlreadySimulated =
+                            List.member newSimulatedNodeLabel model.simLabels
+                    in
+                    if
+                        isAlreadySimulated
+                            == True
+                            || model.edges
+                            == []
+                            || currentSimNode.linkState
+                            == "Rec"
+                            || currentSimNode.linkState
+                            == "Ord"
+                    then
                         True
 
                     else
@@ -1576,8 +1572,8 @@ update msg model =
             in
             ( { model
                 | simulationForm = newSimulationForm
-                , disableRunButton = runBtnToggle
-                , disableDeleteButton = deleteBtnToggle
+                , disableRunButton = isButtonEnabled
+                , disableDeleteButton = isButtonEnabled
                 , disableFormBtn = alreadySim
               }
             , Cmd.none
@@ -1669,8 +1665,8 @@ update msg model =
             in
             ( { model
                 | targetNodeForm = newTargetNodeForm
-                , disableRunButton = runBtnToggle
-                , disableDeleteButton = deleteBtnToggle
+                , disableRunButton = isButtonEnabled
+                , disableDeleteButton = isButtonEnabled
                 , disableFormBtn = sameLabelValidation
               }
             , Cmd.none
@@ -1713,7 +1709,7 @@ update msg model =
                 , nodeFormDisplay = True
                 , simFormDisplay = True
                 , targetFormDisplay = True
-                , disableEdgeForm = enableEdgeForm
+                , disableEdgeForm = isEdgeFormEnabled
               }
             , Cmd.none
             )
@@ -1730,7 +1726,7 @@ update msg model =
                 , nodeFormDisplay = True
                 , edgeFormDisplay = True
                 , targetFormDisplay = True
-                , disableSimForm = enableSimForm
+                , disableSimForm = isNodeSimFormEnabled
               }
             , Cmd.none
             )
@@ -1747,7 +1743,7 @@ update msg model =
                 , nodeFormDisplay = True
                 , edgeFormDisplay = True
                 , simFormDisplay = True
-                , disableTargetForm = enableTargetForm
+                , disableTargetForm = isTargetFormEnabled
               }
             , Cmd.none
             )
@@ -1937,8 +1933,8 @@ viewEdgeInputForm model edge =
                     [ class "card-body p-3"
                     , style "align-items" "center"
                     ]
-                    [ viewNodesList "Label" "mb-3 mx-1" "60px" UpdateEdgeFrom (nidToString edge.from) model
-                    , viewNodesList "Label" "mb-3 mx-1" "60px" UpdateEdgeTo (nidToString edge.to) model
+                    [ viewNodesList "Label" "mb-3 mx-1" "60px" UpdateEdgeOriginNode (nidToString edge.from) model
+                    , viewNodesList "Label" "mb-3 mx-1" "60px" UpdateEdgeDestinyNode (nidToString edge.to) model
                     , viewInputNumber "Tru" edge.truth UpdateEdgeTruth
                     , viewInputNumber "Ind" edge.indeterminacy UpdateEdgeIndeterminacy
                     , viewInputNumber "Fal" edge.falsehood UpdateEdgeFalsehood
@@ -2029,9 +2025,6 @@ viewCurrentState model =
         [ viewKpiTable "KPIs" model
         , viewNodeTable "Nodes" viewNodes model.nodes model
         , viewEdgeTable "Edges" (viewEdges model) model
-
-        --, viewSimTable "Simulation" viewSimulatedNodes model.simulatedNodes model
-        --, viewTargetTable "Target" viewTargetNodes model.targetNodes model
         ]
 
 
@@ -2175,70 +2168,6 @@ viewEdge nodes edge =
 
 
 
---viewSimulatedNodes : List NeutroNode -> Html Msg
---viewSimulatedNodes simulatedNodes =
---    table
---        [ class "table" ]
---        (tr
---            [ class "border-bottom border-secondary" ]
---            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
---            , td [ class "tb-header-label text-white text-center" ] [ text "-" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "Tru" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "Ind" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "Fal" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "" ]
---            ]
---            :: List.map viewSimulatedNode simulatedNodes
---        )
---
---
---viewSimulatedNode : NeutroNode -> Html Msg
---viewSimulatedNode simulatedNode =
---    tr []
---        [ td [ class "tb-header-label text-white align-middle text-left border-0" ] [ text simulatedNode.label ]
---        , td [ class "tb-header-label text-white text-center border-0" ] [ text "-" ]
---        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.truth) ]
---        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.indeterminacy) ]
---        , td [ class "tb-header-label text-white align-middle text-right border-0" ] [ text (String.fromFloat simulatedNode.falsehood) ]
---        , td [ class "tb-header-label text-white align-middle text-right border-0" ]
---            [ a
---                [ class "tb-header-label text-danger font-weight-bold"
---                , type_ "button"
---                , onClick (DeleteSimNode simulatedNode.nodeId)
---                ]
---                [ text "X" ]
---            ]
---        ]
---
---
---viewTargetNodes : List TargetNode -> Html Msg
---viewTargetNodes targetNodes =
---    table
---        [ class "table" ]
---        (tr
---            [ class "border-bottom border-secondary" ]
---            [ td [ class "tb-header-label text-white text-left" ] [ text "Label" ]
---            , td [ class "tb-header-label text-white text-right" ] [ text "" ]
---            ]
---            :: List.map viewTargetNode targetNodes
---        )
---
---
---viewTargetNode : TargetNode -> Html Msg
---viewTargetNode targetNode =
---    tr []
---        [ td
---            [ class "tb-header-label text-white align-middle text-left border-0" ]
---            [ text targetNode.targetNodeLabel ]
---        , td [ class "tb-header-label text-white align-middle text-right border-0" ]
---            [ a
---                [ class "tb-header-label text-danger font-weight-bold"
---                , type_ "button"
---                , onClick (DeleteTargetNode targetNode.targetNodeId)
---                ]
---                [ text "X" ]
---            ]
---        ]
 -- SHARED COMPONENTS
 
 
@@ -2397,6 +2326,7 @@ viewTabMenu =
         ]
 
 
+viewNodeTable : String -> (c -> Html Msg) -> c -> { a | nodeTableDisplay : Bool } -> Html Msg
 viewNodeTable title func nodes model =
     div [ class "m-0 w-100" ]
         [ div
@@ -2436,47 +2366,6 @@ viewEdgeTable title edges model =
             [ hidden model.edgeTableDisplay ]
             [ edges ]
         ]
-
-
-
---viewSimTable title func nodes model =
---    div [ class "m-0 w-100" ]
---        [ div
---            [ class "d-flex bg-dark w-100 m-0 border-bottom" ]
---            [ p
---                [ class "p-1 m-0 text-primary" ]
---                [ text title ]
---            , div
---                [ class "w-100 text-right text-primary pr-1"
---                , style "cursor" "pointer"
---                , onClick DisplaySimTable
---                ]
---                [ text "▼" ]
---            ]
---        , div
---            [ hidden model.simTableDisplay ]
---            [ func nodes ]
---        ]
---
---
---viewTargetTable title func nodes model =
---    div [ class "m-0 w-100" ]
---        [ div
---            [ class "d-flex bg-dark w-100 m-0 border-bottom" ]
---            [ p
---                [ class "p-1 m-0 text-primary" ]
---                [ text title ]
---            , div
---                [ class "w-100 text-right text-primary pr-1"
---                , style "cursor" "pointer"
---                , onClick DisplayTargetTable
---                ]
---                [ text "▼" ]
---            ]
---        , div
---            [ hidden model.targetTableDisplay ]
---            [ func nodes ]
---        ]
 
 
 viewKpiTable title model =
@@ -2564,20 +2453,6 @@ nidToString nid =
             n
 
 
-
---ifIsEnter : msg -> Decode.Decoder msg
---ifIsEnter msg =
---    Decode.field "key" Decode.string
---        |> Decode.andThen
---            (\key ->
---                if key == "Enter" then
---                    Decode.succeed msg
---
---                else
---                    Decode.fail "some other key"
---            )
-
-
 isToggled : Bool -> Bool
 isToggled formToggle =
     if formToggle == True then
@@ -2585,3 +2460,44 @@ isToggled formToggle =
 
     else
         True
+
+
+enabledFormView : List NeutroNode -> String
+enabledFormView nodes =
+    if nodes == [] || List.length nodes <= 2 then
+        "m-0 p-1 bg-dark btn btn-outline-secondary text-center"
+
+    else
+        "card-header m-0 p-1 bg-primary text-center"
+
+
+enabledButton : List NeutroNode -> List NeutroEdge -> Bool
+enabledButton nodes edges =
+    if nodes == [] || edges == [] then
+        True
+
+    else
+        False
+
+
+
+--newCnScore =
+--    if isNaN (toFloat model.numConnections / toFloat model.numConcepts) == True then
+--        0.0
+--
+--    else
+--        toFloat model.numConnections / toFloat model.numConcepts
+--
+--newComplexityScore =
+--    if isNaN (toFloat model.numTransmitters / toFloat model.numReceivers) == True then
+--        0.0
+--
+--    else
+--        toFloat model.numTransmitters / toFloat model.numReceivers
+--
+--newDensityScore =
+--    if isNaN (toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)) == True then
+--        0.0
+--
+--    else
+--        toFloat model.numConnections / toFloat model.numConcepts * (toFloat model.numConcepts - 1)
