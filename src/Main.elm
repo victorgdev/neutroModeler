@@ -3,7 +3,7 @@ port module Main exposing (..)
 {-
    TODO
     Primary
-        - Delete NeutroCalculator instance when deleting button is pressed (JS side)
+        - Delete NeutroCalculator instance when deleting button is pressed (JS side) -- create function to delete finalResNodes after simulate
     Secondary
         - Implement fixed size table height for nodes & edges table, and implement a scrollbar
         - Implement line with arrows
@@ -2142,19 +2142,23 @@ viewEdge nodes edge =
 
 viewInputNumber : String -> NeutroField -> (String -> msg) -> Html msg
 viewInputNumber p val msg =
-    input
-        [ type_ "number"
-        , class "mx-1"
-        , style "width" "41px"
-        , placeholder p
-        , Html.Attributes.min "0.0"
-        , Html.Attributes.max "1.0"
-        , step "0.01"
-        , required True
-        , value (neutroFieldToString val)
-        , onInput msg
+    div []
+        [ input
+            [ type_ "range"
+            , class "mx-1"
+            , style "width" "100px"
+            , style "float" "left"
+            , placeholder p
+            , Html.Attributes.min "0.0"
+            , Html.Attributes.max "1.0"
+            , step "0.01"
+            , required True
+            , value (neutroFieldToString val)
+            , onInput msg
+            ]
+            []
+        , text (neutroFieldToString val)
         ]
-        []
 
 
 viewInputNodeLabel : String -> String -> String -> String -> (String -> msg) -> Html msg
