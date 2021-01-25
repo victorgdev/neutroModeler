@@ -697,7 +697,14 @@ public:
         return edges[index];
     } 
 
-
+    void deleteModel()
+    {
+        nodes.clear();
+        tempResNodes.clear();
+        finalResNodes.clear();
+        edges.clear();
+        edgesCopy.clear();
+    }
 
 // ----------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------
@@ -767,6 +774,7 @@ EMSCRIPTEN_BINDINGS(neutro_calculator) {
         .function("sortNodes", &NeutroCalculator::sortNodes)
         .function("sortEdges", &NeutroCalculator::sortEdges)
         .function("getSimulationResult", &NeutroCalculator::getSimulationResult)
+        .function("deleteModel", &NeutroCalculator::deleteModel)
 
 
         // test functions 

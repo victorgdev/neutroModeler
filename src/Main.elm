@@ -473,7 +473,7 @@ initGraph model =
                     (\{ from, to } ->
                         { source = from
                         , target = to
-                        , distance = 90
+                        , distance = 200
                         , strength = Nothing
                         }
                     )
@@ -2017,13 +2017,13 @@ viewResultNode : ResultNode -> Html Msg
 viewResultNode node =
     let
         truth =
-            Round.ceiling 2 node.truth
+            Round.round 2 node.truth
 
         indeterminacy =
-            Round.ceiling 2 node.indeterminacy
+            Round.round 2 node.indeterminacy
 
         falsehood =
-            Round.ceiling 2 node.falsehood
+            Round.round 2 node.falsehood
     in
     tr []
         [ td [ class "tb-header-label align-center text-white align-middle text-left border-0" ]
