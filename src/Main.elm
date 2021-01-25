@@ -2,19 +2,6 @@ port module Main exposing (..)
 
 {-
    TODO
-    Primary
-        - Delete NeutroCalculator instance when deleting button is pressed (JS side) -- create function to delete finalResNodes after simulate
-    Secondary
-        - Implement fixed size table height for nodes & edges table, and implement a scrollbar
-        - Implement line with arrows
-        - Implement Force Directed NeutroGraph interactive graph drag and drop
-        - Tooltips(tips and explanations modals)
-            - Elements explanation (what is a node, simulation node, target node, edge)
-            - What does the neutro numbers means within nodes (existence in the model) and edges (impact level and type (direct or inverse) on the destiny node)
-            - How to read the simulation result
-        - Icons for the buttons
-        - Change the color of the node in graph and table to ID simNode and targetNode
-
          Set local storage port example code
          --------------------------------------------------------------------------------------
          , update = updateWithStorage
