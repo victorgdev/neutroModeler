@@ -14324,6 +14324,7 @@ var $author$project$Main$hexagon = F3(
 		return $elm_community$typed_svg$TypedSvg$polygon(
 			A2($elm$core$List$cons, p, attrs));
 	});
+var $elm_community$typed_svg$TypedSvg$Core$text = $elm$virtual_dom$VirtualDom$text;
 var $elm_community$typed_svg$TypedSvg$title = $elm_community$typed_svg$TypedSvg$Core$node('title');
 var $author$project$Main$nodeSize = F2(
 	function (size, node) {
@@ -14347,7 +14348,7 @@ var $author$project$Main$nodeSize = F2(
 					_List_Nil,
 					_List_fromArray(
 						[
-							$elm$html$Html$text(node.value.name)
+							$elm_community$typed_svg$TypedSvg$Core$text(node.value.name)
 						]))
 				]));
 	});
@@ -14479,7 +14480,7 @@ var $author$project$Main$viewFormButton = F2(
 				]),
 			_List_fromArray(
 				[
-					$elm$html$Html$text(p)
+					$elm_community$typed_svg$TypedSvg$Core$text(p)
 				]));
 	});
 var $elm$html$Html$h6 = _VirtualDom_node('h6');
@@ -14512,7 +14513,7 @@ var $author$project$Main$viewFormHeader = F3(
 								]),
 							_List_fromArray(
 								[
-									$elm$html$Html$text(title)
+									$elm_community$typed_svg$TypedSvg$Core$text(title)
 								]))
 						]))
 				]));
@@ -14547,7 +14548,7 @@ var $author$project$Main$viewInputNumber = F3(
 							$elm$html$Html$Events$onInput(msg)
 						]),
 					_List_Nil),
-					$elm$html$Html$text(
+					$elm_community$typed_svg$TypedSvg$Core$text(
 					$author$project$Main$neutroFieldToString(val))
 				]));
 	});
@@ -14566,7 +14567,7 @@ var $author$project$Main$viewNodeOpt = function (node) {
 			]),
 		_List_fromArray(
 			[
-				$elm$html$Html$text(label)
+				$elm_community$typed_svg$TypedSvg$Core$text(label)
 			]));
 };
 var $author$project$Main$viewNodesList = F6(
@@ -14678,7 +14679,7 @@ var $author$project$Main$viewDeleteButton = F4(
 				]),
 			_List_fromArray(
 				[
-					$elm$html$Html$text(p)
+					$elm_community$typed_svg$TypedSvg$Core$text(p)
 				]));
 	});
 var $author$project$Main$viewRunButton = F4(
@@ -14697,7 +14698,7 @@ var $author$project$Main$viewRunButton = F4(
 				]),
 			_List_fromArray(
 				[
-					$elm$html$Html$text(p)
+					$elm_community$typed_svg$TypedSvg$Core$text(p)
 				]));
 	});
 var $author$project$Main$viewModelControl = function (model) {
@@ -14949,7 +14950,7 @@ var $author$project$Main$viewMenuButton = function (p) {
 			]),
 		_List_fromArray(
 			[
-				$elm$html$Html$text(p)
+				$elm_community$typed_svg$TypedSvg$Core$text(p)
 			]));
 };
 var $author$project$Main$viewVerticalMenu = A2(
@@ -15009,7 +15010,7 @@ var $author$project$Main$viewEdgeTable = F3(
 								]),
 							_List_fromArray(
 								[
-									$elm$html$Html$text(title)
+									$elm_community$typed_svg$TypedSvg$Core$text(title)
 								])),
 							A2(
 							$elm$html$Html$div,
@@ -15021,7 +15022,7 @@ var $author$project$Main$viewEdgeTable = F3(
 								]),
 							_List_fromArray(
 								[
-									$elm$html$Html$text('▼')
+									$elm_community$typed_svg$TypedSvg$Core$text('▼')
 								]))
 						])),
 					A2(
@@ -15085,7 +15086,7 @@ var $author$project$Main$viewEdge = F2(
 						]),
 					_List_fromArray(
 						[
-							$elm$html$Html$text(fromNodeLabel)
+							$elm_community$typed_svg$TypedSvg$Core$text(fromNodeLabel)
 						])),
 					A2(
 					$elm$html$Html$td,
@@ -15095,7 +15096,7 @@ var $author$project$Main$viewEdge = F2(
 						]),
 					_List_fromArray(
 						[
-							$elm$html$Html$text(toNodeLabel)
+							$elm_community$typed_svg$TypedSvg$Core$text(toNodeLabel)
 						])),
 					A2(
 					$elm$html$Html$td,
@@ -15105,7 +15106,7 @@ var $author$project$Main$viewEdge = F2(
 						]),
 					_List_fromArray(
 						[
-							$elm$html$Html$text(
+							$elm_community$typed_svg$TypedSvg$Core$text(
 							$elm$core$String$fromFloat(edge.truth))
 						])),
 					A2(
@@ -15116,7 +15117,7 @@ var $author$project$Main$viewEdge = F2(
 						]),
 					_List_fromArray(
 						[
-							$elm$html$Html$text(
+							$elm_community$typed_svg$TypedSvg$Core$text(
 							$elm$core$String$fromFloat(edge.indeterminacy))
 						])),
 					A2(
@@ -15127,7 +15128,7 @@ var $author$project$Main$viewEdge = F2(
 						]),
 					_List_fromArray(
 						[
-							$elm$html$Html$text(
+							$elm_community$typed_svg$TypedSvg$Core$text(
 							$elm$core$String$fromFloat(edge.falsehood))
 						])),
 					A2(
@@ -15149,7 +15150,7 @@ var $author$project$Main$viewEdge = F2(
 								]),
 							_List_fromArray(
 								[
-									$elm$html$Html$text('X')
+									$elm_community$typed_svg$TypedSvg$Core$text('X')
 								]))
 						]))
 				]));
@@ -15179,7 +15180,7 @@ var $author$project$Main$viewEdges = function (model) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('From')
+								$elm_community$typed_svg$TypedSvg$Core$text('From')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15189,7 +15190,7 @@ var $author$project$Main$viewEdges = function (model) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('To')
+								$elm_community$typed_svg$TypedSvg$Core$text('To')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15199,7 +15200,7 @@ var $author$project$Main$viewEdges = function (model) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Tru')
+								$elm_community$typed_svg$TypedSvg$Core$text('Tru')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15209,7 +15210,7 @@ var $author$project$Main$viewEdges = function (model) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Ind')
+								$elm_community$typed_svg$TypedSvg$Core$text('Ind')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15219,7 +15220,7 @@ var $author$project$Main$viewEdges = function (model) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Fal')
+								$elm_community$typed_svg$TypedSvg$Core$text('Fal')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15229,7 +15230,7 @@ var $author$project$Main$viewEdges = function (model) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('')
+								$elm_community$typed_svg$TypedSvg$Core$text('')
 							]))
 					])),
 			A2(
@@ -15252,7 +15253,7 @@ var $author$project$Main$viewRow = F2(
 						]),
 					_List_fromArray(
 						[
-							$elm$html$Html$text(p)
+							$elm_community$typed_svg$TypedSvg$Core$text(p)
 						])),
 					A2(
 					$elm$html$Html$td,
@@ -15262,7 +15263,7 @@ var $author$project$Main$viewRow = F2(
 						]),
 					_List_fromArray(
 						[
-							$elm$html$Html$text(
+							$elm_community$typed_svg$TypedSvg$Core$text(
 							$elm$core$String$fromInt(kpi))
 						]))
 				]));
@@ -15282,7 +15283,7 @@ var $author$project$Main$viewRowFloat = F2(
 						]),
 					_List_fromArray(
 						[
-							$elm$html$Html$text(p)
+							$elm_community$typed_svg$TypedSvg$Core$text(p)
 						])),
 					A2(
 					$elm$html$Html$td,
@@ -15293,7 +15294,7 @@ var $author$project$Main$viewRowFloat = F2(
 						]),
 					_List_fromArray(
 						[
-							$elm$html$Html$text(
+							$elm_community$typed_svg$TypedSvg$Core$text(
 							$elm$core$String$fromFloat(kpi))
 						]))
 				]));
@@ -15324,7 +15325,7 @@ var $author$project$Main$viewKpiTable = F2(
 								]),
 							_List_fromArray(
 								[
-									$elm$html$Html$text(title)
+									$elm_community$typed_svg$TypedSvg$Core$text(title)
 								]))
 						])),
 					A2(
@@ -15382,7 +15383,7 @@ var $author$project$Main$viewNodeTable = F4(
 								]),
 							_List_fromArray(
 								[
-									$elm$html$Html$text(title)
+									$elm_community$typed_svg$TypedSvg$Core$text(title)
 								])),
 							A2(
 							$elm$html$Html$div,
@@ -15394,7 +15395,7 @@ var $author$project$Main$viewNodeTable = F4(
 								]),
 							_List_fromArray(
 								[
-									$elm$html$Html$text('▼')
+									$elm_community$typed_svg$TypedSvg$Core$text('▼')
 								]))
 						])),
 					A2(
@@ -15426,7 +15427,7 @@ var $author$project$Main$viewNode = function (node) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text(node.label)
+						$elm_community$typed_svg$TypedSvg$Core$text(node.label)
 					])),
 				A2(
 				$elm$html$Html$td,
@@ -15436,7 +15437,7 @@ var $author$project$Main$viewNode = function (node) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text(node.state)
+						$elm_community$typed_svg$TypedSvg$Core$text(node.state)
 					])),
 				A2(
 				$elm$html$Html$td,
@@ -15446,7 +15447,7 @@ var $author$project$Main$viewNode = function (node) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text(
+						$elm_community$typed_svg$TypedSvg$Core$text(
 						$elm$core$String$fromFloat(node.truth))
 					])),
 				A2(
@@ -15457,7 +15458,7 @@ var $author$project$Main$viewNode = function (node) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text(
+						$elm_community$typed_svg$TypedSvg$Core$text(
 						$elm$core$String$fromFloat(node.indeterminacy))
 					])),
 				A2(
@@ -15468,7 +15469,7 @@ var $author$project$Main$viewNode = function (node) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text(
+						$elm_community$typed_svg$TypedSvg$Core$text(
 						$elm$core$String$fromFloat(node.falsehood))
 					])),
 				A2(
@@ -15490,7 +15491,7 @@ var $author$project$Main$viewNode = function (node) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('X')
+								$elm_community$typed_svg$TypedSvg$Core$text('X')
 							]))
 					]))
 			]));
@@ -15520,7 +15521,7 @@ var $author$project$Main$viewNodes = function (nodes) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Label')
+								$elm_community$typed_svg$TypedSvg$Core$text('Label')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15530,7 +15531,7 @@ var $author$project$Main$viewNodes = function (nodes) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('State')
+								$elm_community$typed_svg$TypedSvg$Core$text('State')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15540,7 +15541,7 @@ var $author$project$Main$viewNodes = function (nodes) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Tru')
+								$elm_community$typed_svg$TypedSvg$Core$text('Tru')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15550,7 +15551,7 @@ var $author$project$Main$viewNodes = function (nodes) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Ind')
+								$elm_community$typed_svg$TypedSvg$Core$text('Ind')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15560,7 +15561,7 @@ var $author$project$Main$viewNodes = function (nodes) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Fal')
+								$elm_community$typed_svg$TypedSvg$Core$text('Fal')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15570,7 +15571,7 @@ var $author$project$Main$viewNodes = function (nodes) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('')
+								$elm_community$typed_svg$TypedSvg$Core$text('')
 							]))
 					])),
 			A2($elm$core$List$map, $author$project$Main$viewNode, nodes)));
@@ -15610,7 +15611,7 @@ var $author$project$Main$viewResultNode = function (node) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text(node.label)
+						$elm_community$typed_svg$TypedSvg$Core$text(node.label)
 					])),
 				A2(
 				$elm$html$Html$td,
@@ -15620,7 +15621,7 @@ var $author$project$Main$viewResultNode = function (node) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text(node.state)
+						$elm_community$typed_svg$TypedSvg$Core$text(node.state)
 					])),
 				A2(
 				$elm$html$Html$td,
@@ -15630,7 +15631,7 @@ var $author$project$Main$viewResultNode = function (node) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text(truth)
+						$elm_community$typed_svg$TypedSvg$Core$text(truth)
 					])),
 				A2(
 				$elm$html$Html$td,
@@ -15640,7 +15641,7 @@ var $author$project$Main$viewResultNode = function (node) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text(indeterminacy)
+						$elm_community$typed_svg$TypedSvg$Core$text(indeterminacy)
 					])),
 				A2(
 				$elm$html$Html$td,
@@ -15650,7 +15651,7 @@ var $author$project$Main$viewResultNode = function (node) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text(falsehood)
+						$elm_community$typed_svg$TypedSvg$Core$text(falsehood)
 					]))
 			]));
 };
@@ -15679,7 +15680,7 @@ var $author$project$Main$viewResultNodesState = function (model) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Label')
+								$elm_community$typed_svg$TypedSvg$Core$text('Label')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15689,7 +15690,7 @@ var $author$project$Main$viewResultNodesState = function (model) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('State')
+								$elm_community$typed_svg$TypedSvg$Core$text('State')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15699,7 +15700,7 @@ var $author$project$Main$viewResultNodesState = function (model) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Tru')
+								$elm_community$typed_svg$TypedSvg$Core$text('Tru')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15709,7 +15710,7 @@ var $author$project$Main$viewResultNodesState = function (model) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Ind')
+								$elm_community$typed_svg$TypedSvg$Core$text('Ind')
 							])),
 						A2(
 						$elm$html$Html$td,
@@ -15719,7 +15720,7 @@ var $author$project$Main$viewResultNodesState = function (model) {
 							]),
 						_List_fromArray(
 							[
-								$elm$html$Html$text('Fal')
+								$elm_community$typed_svg$TypedSvg$Core$text('Fal')
 							]))
 					])),
 			A2($elm$core$List$map, $author$project$Main$viewResultNode, model)));
@@ -15745,7 +15746,7 @@ var $author$project$Main$viewTabMenu = function (model) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Current State')
+						$elm_community$typed_svg$TypedSvg$Core$text('Current State')
 					])),
 				A2(
 				$elm$html$Html$button,
@@ -15758,7 +15759,7 @@ var $author$project$Main$viewTabMenu = function (model) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Simulation')
+						$elm_community$typed_svg$TypedSvg$Core$text('Simulation')
 					]))
 			]));
 };

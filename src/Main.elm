@@ -26,9 +26,9 @@ import Browser
 import Color exposing (Color)
 import Force exposing (State)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
-import Html exposing (..)
+import Html exposing (Html, a, button, div, form, h6, input, option, p, select, table, td, tr)
 import Html.Attributes exposing (class, disabled, hidden, id, placeholder, required, step, style, type_, value)
-import Html.Events exposing (..)
+import Html.Events exposing (onClick, onInput, onSubmit)
 import IntDict
 import Json.Decode as Decode exposing (Decoder, Value, float, int, list, string)
 import Json.Decode.Pipeline as Decode
@@ -40,7 +40,7 @@ import Tuple exposing (first, pair, second)
 import TypedSvg exposing (circle, g, line, polygon, svg)
 import TypedSvg.Attributes exposing (fill, points, stroke, viewBox)
 import TypedSvg.Attributes.InPx exposing (cx, cy, r, strokeWidth, x1, x2, y1, y2)
-import TypedSvg.Core exposing (Svg)
+import TypedSvg.Core exposing (Svg, text)
 import TypedSvg.Types exposing (Paint(..))
 
 
