@@ -85,7 +85,6 @@ type alias Model =
     -- Elements
     { nodes : List NeutroNode
     , edges : List NeutroEdge
-    , simulatedNodes : List NeutroNode
     , targetNodes : List TargetNode
     , neutroModel : NeutroModel
     , nodeLabelPairs : List NodeLabelPair
@@ -137,6 +136,8 @@ type alias Model =
 
 
 -- TYPES
+-- If it has comment about type then create types alias
+-- One hour refactoring a day in the morning
 
 
 type alias NodeLabelPair =
@@ -361,7 +362,6 @@ initModel =
     -- Elements
     { nodes = []
     , edges = []
-    , simulatedNodes = []
     , targetNodes = []
     , neutroModel = defaultNeutroModel
     , nodeLabelPairs = []
@@ -631,9 +631,6 @@ update msg model =
         numEdges =
             toFloat model.numConnections
 
-        numSimNodes =
-            List.length model.simulatedNodes + 1
-
         numTargetNodes =
             List.length model.targetNodes + 1
 
@@ -653,7 +650,7 @@ update msg model =
             isNaNChecked (densityScore numEdges numNodes)
 
         isButtonEnabled =
-            enabledButton model.nodes model.edges numSimNodes numTargetNodes
+            enabledButton model.nodes model.edges numTargetNodes
 
         isEdgeFormEnabled =
             enabledFormView model.nodes
@@ -1034,7 +1031,6 @@ update msg model =
             in
             ( { model
                 | simulationForm = newSimulationForm
-                , simulatedNodes = model.simulatedNodes ++ [ newSimulationNode ]
                 , nodes = updatedNodeFromSim
                 , neutroModel = newNeutroModelSimNodes
                 , disableRunButton = isButtonEnabled
@@ -2434,9 +2430,9 @@ enabledFormView nodes =
         "card-header m-0 p-1 bg-primary text-center"
 
 
-enabledButton : List NeutroNode -> List NeutroEdge -> Int -> Int -> Bool
-enabledButton nodes edges numSimNodes numTargetNodes =
-    if nodes == [] && edges == [] && numSimNodes < 1 && numTargetNodes < 1 then
+enabledButton : List NeutroNode -> List NeutroEdge -> Int -> Bool
+enabledButton nodes edges numTargetNodes =
+    if nodes == [] && edges == [] && numTargetNodes < 1 then
         True
 
     else
