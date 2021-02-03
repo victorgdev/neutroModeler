@@ -60,11 +60,11 @@ initializeNode ctx =
     }
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+init : Graph String () -> ( Model, Cmd Msg )
+init g =
     let
         graph =
-            Graph.mapContexts initializeNode miserablesGraph
+            Graph.mapContexts initializeNode g
 
         link { from, to } =
             ( from, to )

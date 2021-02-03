@@ -5,6 +5,7 @@
   "main": "elm.js",
   "scripts": {
     "dev": "elm-live src/Main.elm --open -- --debug --output elm.js",
+    "dev-graph": "elm-live src/NeutroGraph.elm --open -- --debug --output graph.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

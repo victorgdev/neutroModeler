@@ -34,6 +34,7 @@ import Json.Decode as Decode exposing (Decoder, Value, float, int, list, string)
 import Json.Decode.Pipeline as Decode
 import List exposing (range)
 import List.Extra
+import NeutroGraph exposing (Drag)
 import Round
 import String exposing (concat)
 import Tuple exposing (first, pair, second)
@@ -81,9 +82,17 @@ subscriptions _ =
 -- MODEL
 
 
+type alias NeutroGraph =
+    { drag : Maybe Drag
+    , graph : Graph Entity ()
+    , simulation : Force.State NodeId
+    }
+
+
 type alias Model =
     -- Elements
-    { nodes : List NeutroNode
+    { graph : NeutroGraph
+    , nodes : List NeutroNode
     , edges : List NeutroEdge
     , targetNodes : List TargetNode
     , neutroModel : NeutroModel
@@ -568,10 +577,14 @@ neutroGraph model =
 
         edgeList =
             List.map (\edge -> ( edge.from, edge.to )) model.edges
+
+        ourGraph : Graph String ()
+        ourGraph =
+            Graph.fromNodeLabelsAndEdgePairs
+                nodeList
+                edgeList
     in
-    Graph.fromNodeLabelsAndEdgePairs
-        nodeList
-        edgeList
+    NeutroGraph.init ourGraph
 
 
 
